@@ -10,6 +10,7 @@ extern crate tokio_core;
 extern crate tokio_service;
 extern crate tk_bufstream;
 extern crate minihttp;
+extern crate regex;
 
 use futures::{Async, Finished, finished};
 use tokio_core::net::TcpStream;
@@ -17,8 +18,8 @@ use tokio_core::reactor::Core;
 use tokio_service::Service;
 use tk_bufstream::IoBuf;
 use minihttp::{Error, ResponseFn};
+use regex::Regex;
 
-use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::rc::Rc;
 
@@ -30,7 +31,9 @@ pub type ResponseWriter = minihttp::ResponseWriter<TcpStream>;
 
 #[derive(Clone)]
 pub struct Http {
-    routes: HashMap<String, Rc<Fn(&Request, &mut ResponseWriter)>>,
+    routes: Vec<Regex>,
+    route_handlers: Vec<Rc<Fn(&Request, &mut ResponseWriter)>>,
+    not_found: Rc<Fn(&Request, &mut ResponseWriter)>,
 }
 
 impl Service for Http {
@@ -41,7 +44,13 @@ impl Service for Http {
 
     fn call(&self, req: Request) -> Self::Future {
         // Retrieve the function associated with this path
-        let func = self.routes.get(&req.path).unwrap().clone();
+        // let path = req.path;
+        let index = self.match_route(&req.path);
+        let func = match index {
+            Some(i) => self.route_handlers[i].clone(),
+            None => self.not_found.clone(),
+        };
+        // let func = self.routes.get(&req.path).unwrap().clone();
 
         // Note: rather than allocating a response object, we return
         // a lambda that pushes headers into `ResponseWriter` which
@@ -63,12 +72,20 @@ impl Service for Http {
 impl Http {
     /// Create a new Http handler
     pub fn new() -> Http {
-        Http { routes: HashMap::new() }
+        let func = Rc::new(not_found);
+        Http {
+            routes: Vec::new(),
+            route_handlers: Vec::new(),
+            not_found: func,
+        }
     }
 
     /// Add a function to handle the given `path`.
-    pub fn handle_func(&mut self, path: String, func: Rc<Fn(&Request, &mut ResponseWriter)>) {
-        self.routes.insert(path, func);
+    pub fn handle_func(&mut self, expr: Regex, func: Rc<Fn(&Request, &mut ResponseWriter)>) {
+        // self.routes.insert(path, func);
+        self.routes.push(expr);
+        self.route_handlers.push(func);
+        assert_eq!(self.routes.len(), self.route_handlers.len());
     }
 
     /// Run the server
@@ -76,5 +93,28 @@ impl Http {
         let mut lp = Core::new().unwrap();
         minihttp::serve(&lp.handle(), addr, self);
         lp.run(futures::empty::<(), ()>()).unwrap()
+    }
+
+    fn match_route(&self, route: &str) -> Option<usize> {
+        let mut index = 0;
+        for expr in &self.routes {
+            if expr.is_match(route) {
+                return Some(index);
+            }
+            index += 1;
+        }
+
+        // No matching routes were found
+        // In this case we probably want to respond with a 404
+        None
+    }
+}
+
+// TODO(nokaa): Serve an actual 404
+fn not_found(_req: &Request, res: &mut ResponseWriter) {
+    res.status(200, "OK");
+    res.add_chunked().unwrap();
+    if res.done_headers().unwrap() {
+        res.write_body(b"404 - Not found");
     }
 }
