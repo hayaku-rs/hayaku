@@ -22,13 +22,15 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::rc::Rc;
 
-pub use minihttp::{Request, ResponseWriter};
+pub use minihttp::Request;
 
 type Response = ResponseFn<Finished<IoBuf<TcpStream>, Error>, TcpStream>;
 
+pub type ResponseWriter = minihttp::ResponseWriter<TcpStream>;
+
 #[derive(Clone)]
 pub struct Http {
-    routes: HashMap<String, Rc<Fn(&Request, &mut ResponseWriter<TcpStream>)>>,
+    routes: HashMap<String, Rc<Fn(&Request, &mut ResponseWriter)>>,
 }
 
 impl Service for Http {
@@ -65,9 +67,7 @@ impl Http {
     }
 
     /// Add a function to handle the given `path`.
-    pub fn handle_func(&mut self,
-                       path: String,
-                       func: Rc<Fn(&Request, &mut ResponseWriter<TcpStream>)>) {
+    pub fn handle_func(&mut self, path: String, func: Rc<Fn(&Request, &mut ResponseWriter)>) {
         self.routes.insert(path, func);
     }
 

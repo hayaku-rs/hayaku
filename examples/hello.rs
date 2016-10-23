@@ -4,9 +4,7 @@ extern crate minihttp;
 extern crate tokio_core;
 extern crate tk_bufstream;
 
-use http::Http;
-use minihttp::{Request, ResponseWriter};
-use tokio_core::net::TcpStream;
+use http::{Http, Request, ResponseWriter};
 
 use std::rc::Rc;
 
@@ -17,7 +15,7 @@ fn main() {
     http.listen_and_serve(addr);
 }
 
-fn test_func(_req: &Request, res: &mut ResponseWriter<TcpStream>) {
+fn test_func(_req: &Request, res: &mut ResponseWriter) {
     res.status(200, "OK");
     res.add_chunked().unwrap();
     if res.done_headers().unwrap() {
