@@ -1,5 +1,7 @@
 use std::io;
 
+use minihttp::Status;
+
 use file;
 
 use ResponseWriter;
@@ -81,12 +83,7 @@ pub fn redirect(res: &mut ResponseWriter,
                 location: &[u8],
                 code: u16)
                 -> Result<(), String> {
-    let message = match code_lookup(code) {
-        Some(m) => m,
-        None => return Err("Code not found!".to_string()),
-    };
-
-    res.status(code, message);
+    res.status(Status::from(code).unwrap());
     res.add_header("Location", location).unwrap();
     res.add_length(data.len() as u64).unwrap();
     if res.done_headers().unwrap() {
@@ -101,12 +98,7 @@ pub fn redirect(res: &mut ResponseWriter,
 /// happened to the user.
 /// Returns an `Err(String)` if an invalid code is received.
 pub fn error(res: &mut ResponseWriter, data: &[u8], code: u16) -> Result<(), String> {
-    let message = match code_lookup(code) {
-        Some(m) => m,
-        None => return Err("Code not found!".to_string()),
-    };
-
-    res.status(code, message);
+    res.status(Status::from(code).unwrap());
     res.add_length(data.len() as u64).unwrap();
     if res.done_headers().unwrap() {
         res.write_body(data);
@@ -126,7 +118,7 @@ fn code_lookup<'a>(code: u16) -> Option<&'a str> {
 
 /// Sends `data` to the client with status 200.
 pub fn send_string(res: &mut ResponseWriter, data: &[u8]) {
-    res.status(200, "OK");
+    res.status(Status::Ok);
     res.add_length(data.len() as u64).unwrap();
     if res.done_headers().unwrap() {
         res.write_body(data);
@@ -136,7 +128,7 @@ pub fn send_string(res: &mut ResponseWriter, data: &[u8]) {
 /// Sends `data` to the client with status 200.
 /// Sets `Content-Type` header to `text/plain`.
 pub fn send_string_raw(res: &mut ResponseWriter, data: &[u8]) {
-    res.status(200, "OK");
+    res.status(Status::Ok);
     // Add `Content-Type` header to ensure data is interpreted
     // as plaintext
     res.add_header("Content-Type", "text/plain; charset=utf-8".as_bytes())
@@ -154,7 +146,7 @@ pub fn send_string_raw(res: &mut ResponseWriter, data: &[u8]) {
 pub fn send_file(res: &mut ResponseWriter, filename: &str) -> Result<(), io::Error> {
     let data = &try!(file::read_file(filename))[..];
 
-    res.status(200, "OK");
+    res.status(Status::Ok);
     res.add_length(data.len() as u64).unwrap();
     if res.done_headers().unwrap() {
         res.write_body(data);
