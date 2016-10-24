@@ -5,12 +5,18 @@
  * The license may also be found at https://gnu.org/licenses/agpl.txt
  * */
 
+#[macro_use]
+extern crate chomp;
 extern crate futures;
 extern crate tokio_core;
 extern crate tokio_service;
 extern crate tk_bufstream;
 extern crate minihttp;
 extern crate regex;
+
+pub mod file;
+pub mod forms;
+pub mod util;
 
 use futures::{Async, Finished, finished};
 use tokio_core::net::TcpStream;
