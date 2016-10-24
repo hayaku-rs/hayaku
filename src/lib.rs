@@ -129,8 +129,4 @@ impl<T: 'static + Clone> Http<T> {
 
         best_match.1
     }
-
-    fn four_o_four(_req: &Request, res: &mut ResponseWriter, _context: &T) {
-        util::error(res, b"404 - Not found", 404).unwrap();
-    }
 }
