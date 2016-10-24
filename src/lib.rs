@@ -39,7 +39,7 @@ pub type ResponseWriter = minihttp::ResponseWriter<TcpStream>;
 pub struct Http<T: Clone> {
     routes: Vec<Regex>,
     route_handlers: Vec<Rc<Fn(&Request, &mut ResponseWriter, &T)>>,
-    not_found: Option<Rc<Fn(&Request, &mut ResponseWriter)>>,
+    not_found: Option<Rc<Fn(&Request, &mut ResponseWriter, &T)>>,
     context: T,
 }
 
@@ -51,14 +51,22 @@ impl<T: 'static + Clone> Service for Http<T> {
 
     fn call(&self, req: Request) -> Self::Future {
         // Retrieve the function associated with this path
-        // let path = req.path;
         let index = self.match_route(&req.path);
         let func = match index {
             Some(i) => self.route_handlers[i].clone(),
-            None => Rc::new(Http::four_o_four),
+            None => {
+                match &self.not_found {
+                    &Some(ref f) => f.clone(),
+                    &None => {
+                        return finished(ResponseFn::new(move |mut res| {
+                            util::error(&mut res, b"404 - Not found", 404).unwrap();
+                            res.done()
+                        }));
+                    }
+                }
+            }
         };
         let context = self.context.clone();
-        // let func = self.routes.get(&req.path).unwrap().clone();
 
         // Note: rather than allocating a response object, we return
         // a lambda that pushes headers into `ResponseWriter` which
@@ -80,7 +88,6 @@ impl<T: 'static + Clone> Service for Http<T> {
 impl<T: 'static + Clone> Http<T> {
     /// Create a new Http handler
     pub fn new(context: T) -> Http<T> {
-        // let func = Rc::new(Http::not_found);
         Http {
             routes: Vec::new(),
             route_handlers: Vec::new(),
@@ -105,25 +112,25 @@ impl<T: 'static + Clone> Http<T> {
     }
 
     fn match_route(&self, route: &str) -> Option<usize> {
+        // The (size, index) of the best match
+        let mut best_match = (0, None);
+
         let mut index = 0;
         for expr in &self.routes {
-            if expr.is_match(route) {
-                return Some(index);
+            if let Some((a, b)) = expr.find(route) {
+                if b - a > best_match.0 {
+                    println!("best match: {}", expr);
+                    best_match.0 = b - a;
+                    best_match.1 = Some(index);
+                }
             }
             index += 1;
         }
 
-        // No matching routes were found
-        // In this case we probably want to respond with a 404
-        None
+        best_match.1
     }
 
-    // TODO(nokaa): Serve an actual 404
     fn four_o_four(_req: &Request, res: &mut ResponseWriter, _context: &T) {
-        res.status(200, "OK");
-        res.add_chunked().unwrap();
-        if res.done_headers().unwrap() {
-            res.write_body(b"404 - Not found");
-        }
+        util::error(res, b"404 - Not found", 404).unwrap();
     }
 }
