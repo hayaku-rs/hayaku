@@ -31,7 +31,7 @@ use regex::Regex;
 use std::net::SocketAddr;
 use std::rc::Rc;
 
-pub use minihttp::Request;
+pub use minihttp::{Request, Status};
 
 type Response = ResponseFn<Finished<IoBuf<TcpStream>, Error>, TcpStream>;
 
