@@ -7,6 +7,8 @@
 
 #[macro_use]
 extern crate chomp;
+#[macro_use]
+extern crate log;
 extern crate futures;
 extern crate tokio_core;
 extern crate tokio_service;
@@ -98,7 +100,6 @@ impl<T: 'static + Clone> Http<T> {
 
     /// Add a function to handle the given `path`.
     pub fn handle_func(&mut self, expr: Regex, func: Rc<Fn(&Request, &mut ResponseWriter, &T)>) {
-        // self.routes.insert(path, func);
         self.routes.push(expr);
         self.route_handlers.push(func);
         assert_eq!(self.routes.len(), self.route_handlers.len());
@@ -119,7 +120,7 @@ impl<T: 'static + Clone> Http<T> {
         for expr in &self.routes {
             if let Some((a, b)) = expr.find(route) {
                 if b - a > best_match.0 {
-                    println!("best match: {}", expr);
+                    info!("best match: {}", expr);
                     best_match.0 = b - a;
                     best_match.1 = Some(index);
                 }
