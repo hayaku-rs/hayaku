@@ -2,6 +2,14 @@
 name = "hayaku"
 version = "0.1.0"
 authors = ["nokaa <nokaa@cock.li>"]
+license = "AGPLv3"
+readme = "README.md"
+keywords = ["futures", "async", "tokio", "web", "hayaku", "server"]
+repository = "https://github.com/nokaa/hayaku"
+homepage = "https://github.com/nokaa/hayaku"
+description = """
+An http library based on Golang's `net/http` written using Tokio and Futures.
+"""
 
 [dependencies]
 chomp = "0.2.4"
