@@ -6,10 +6,11 @@ extern crate regex;
 extern crate hayaku;
 
 use std::collections::HashMap;
+use std::io::Write;
 use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 
-use hayaku::{Http, Request, ResponseWriter, forms, util};
+use hayaku::{Http, Request, ResponseWriter, Status, forms};
 use regex::Regex;
 use rand::Rng;
 
@@ -42,7 +43,7 @@ fn main() {
 }
 
 fn new_paste(_req: &Request, res: &mut ResponseWriter, _ctx: &Ctx) {
-    if let Err(e) = util::send_file(res, "examples/new.html") {
+    if let Err(e) = res.write_file("examples/new.html") {
         error!("{}", e);
     }
 }
@@ -55,7 +56,8 @@ fn get_paste(req: &Request, res: &mut ResponseWriter, ctx: &Ctx) {
     // sending the results if found, otherwise sending a 404
     let lock = ctx.read().unwrap();
     if let Some(p) = lock.db.get(&path[1..]) {
-        util::send_string_raw(res, p.as_bytes());
+        res.add_header("Content-Type", "text/plain; charset=utf-8".as_bytes());
+        res.write_all(&mut p.as_bytes()).unwrap();
     } else {
         not_found(req, res, ctx);
     }
@@ -64,9 +66,7 @@ fn get_paste(req: &Request, res: &mut ResponseWriter, ctx: &Ctx) {
 fn make_paste(req: &Request, res: &mut ResponseWriter, ctx: &Ctx) {
     // Get the contents of the request body
     let buf = match req.body {
-        Some(ref b) => {
-            &b.data[..]
-        }
+        Some(ref b) => &b.data[..],
         None => panic!("no body found"),
     };
 
@@ -91,13 +91,15 @@ fn make_paste(req: &Request, res: &mut ResponseWriter, ctx: &Ctx) {
     lock.db.insert(String::from(name.clone()), String::from(paste_str));
 
     // Redirect the user to the url of the created paste
-    if let Err(e) = util::redirect(res, b"You are being redirected", name.as_bytes(), 302) {
+    if let Err(e) = res.redirect(Status::Found, name.as_bytes(), b"You are being redirected") {
         error!("{}", e);
     }
 }
 
 fn not_found(_req: &Request, res: &mut ResponseWriter, _ctx: &Ctx) {
-    if let Err(e) = util::error(res, b"404 - Page not found", 404) {
+    res.status(Status::NotFound);
+    info!("{}", res.is_started());
+    if let Err(e) = res.write_all(b"404 - Page not found") {
         error!("{}", e);
     }
 }

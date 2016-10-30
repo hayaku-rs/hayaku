@@ -18,7 +18,11 @@ extern crate regex;
 
 pub mod file;
 pub mod forms;
-pub mod util;
+// pub mod util;
+mod response;
+
+pub use response::ResponseWriter;
+pub use minihttp::{Request, Status};
 
 use futures::{Async, Finished, finished};
 use tokio_core::net::TcpStream;
@@ -28,14 +32,11 @@ use tk_bufstream::IoBuf;
 use minihttp::{Error, ResponseFn};
 use regex::Regex;
 
+use std::io::Write;
 use std::net::SocketAddr;
 use std::rc::Rc;
 
-pub use minihttp::{Request, Status};
-
 type Response = ResponseFn<Finished<IoBuf<TcpStream>, Error>, TcpStream>;
-
-pub type ResponseWriter = minihttp::ResponseWriter<TcpStream>;
 
 #[derive(Clone)]
 pub struct Http<T: Clone> {
@@ -60,8 +61,12 @@ impl<T: 'static + Clone> Service for Http<T> {
                 match &self.not_found {
                     &Some(ref f) => f.clone(),
                     &None => {
-                        return finished(ResponseFn::new(move |mut res| {
-                            util::error(&mut res, b"404 - Not found", 404).unwrap();
+                        return finished(ResponseFn::new(move |res| {
+                            let mut res = ResponseWriter::new(res);
+                            res.status(Status::NotFound);
+                            if let Err(e) = res.write_all(b"404 - Page not found") {
+                                error!("{}", e);
+                            }
                             res.done()
                         }));
                     }
@@ -74,7 +79,8 @@ impl<T: 'static + Clone> Service for Http<T> {
         // a lambda that pushes headers into `ResponseWriter` which
         // writes them directly into response buffer without allocating
         // intermediate structures
-        finished(ResponseFn::new(move |mut res| {
+        finished(ResponseFn::new(move |res| {
+            let mut res = ResponseWriter::new(res);
             // Run the function
             func(&req, &mut res, &context);
             // Return the future associated with finishing handling this request

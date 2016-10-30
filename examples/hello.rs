@@ -1,9 +1,10 @@
 extern crate hayaku;
 extern crate regex;
 
-use hayaku::{util, Http, Request, ResponseWriter};
+use hayaku::{Http, Request, ResponseWriter};
 use regex::Regex;
 
+use std::io::Write;
 use std::rc::Rc;
 
 fn main() {
@@ -14,5 +15,5 @@ fn main() {
 }
 
 fn hello_handler(_req: &Request, res: &mut ResponseWriter, _ctx: &()) {
-    util::send_string(res, b"Hello, world!");
+    res.write(b"Hello, world!").unwrap();
 }

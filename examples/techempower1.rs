@@ -2,9 +2,10 @@ extern crate hayaku;
 extern crate regex;
 extern crate rustc_serialize;
 
-use hayaku::{Http, Request, ResponseWriter, Status};
+use hayaku::{Http, Request, ResponseWriter};
 use regex::Regex;
 
+use std::io::Write;
 use std::rc::Rc;
 
 fn main() {
@@ -20,13 +21,9 @@ struct Message {
 }
 
 fn json_handler(_req: &Request, res: &mut ResponseWriter, _ctx: &()) {
-    let msg = Message {message: "Hello, World!".to_string()};
+    let msg = Message { message: "Hello, World!".to_string() };
     let data = &rustc_serialize::json::encode(&msg).unwrap();
 
-    res.status(Status::Ok);
-    res.add_header("Content-Type", "application/json").unwrap();
-    res.add_length(data.len() as u64).unwrap();
-    if res.done_headers().unwrap() {
-        res.write_body(data.as_bytes());
-    }
+    res.add_header("Content-Type", "application/json");
+    res.write_all(data.as_bytes()).unwrap();
 }
