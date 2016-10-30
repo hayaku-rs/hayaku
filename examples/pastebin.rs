@@ -10,7 +10,7 @@ use std::io::Write;
 use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 
-use hayaku::{Http, Request, ResponseWriter, Status, forms};
+use hayaku::{Http, Request, ResponseWriter, Path, Status, forms};
 use regex::Regex;
 use rand::Rng;
 
@@ -35,10 +35,11 @@ fn main() {
     let ctx = Arc::new(RwLock::new(context));
 
     let mut http = Http::new(ctx);
-    http.handle_func(Regex::new(r"/").unwrap(), Rc::new(new_paste));
-    http.handle_func(Regex::new(r"/new").unwrap(), Rc::new(make_paste));
-    http.handle_func(Regex::new(r"/[a-zA-Z0-9]+").unwrap(), Rc::new(get_paste));
-    http.handle_func(Regex::new(r"/404").unwrap(), Rc::new(not_found));
+    http.handle_func(Path::from(String::from("/")), Rc::new(new_paste));
+    http.handle_func(Path::from(String::from("/new")), Rc::new(make_paste));
+    http.handle_func(Path::from(Regex::new("/[a-zA-Z0-9]+").unwrap()),
+                     Rc::new(get_paste));
+    http.handle_func(Path::from(String::from("/404")), Rc::new(not_found));
     http.listen_and_serve(addr);
 }
 

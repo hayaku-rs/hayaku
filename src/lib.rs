@@ -19,8 +19,10 @@ extern crate regex;
 pub mod file;
 pub mod forms;
 // pub mod util;
+mod path;
 mod response;
 
+pub use path::Path;
 pub use response::ResponseWriter;
 pub use minihttp::{Request, Status};
 
@@ -30,7 +32,6 @@ use tokio_core::reactor::Core;
 use tokio_service::Service;
 use tk_bufstream::IoBuf;
 use minihttp::{Error, ResponseFn};
-use regex::Regex;
 
 use std::io::Write;
 use std::net::SocketAddr;
@@ -40,7 +41,7 @@ type Response = ResponseFn<Finished<IoBuf<TcpStream>, Error>, TcpStream>;
 
 #[derive(Clone)]
 pub struct Http<T: Clone> {
-    routes: Vec<Regex>,
+    routes: Vec<Path>,
     route_handlers: Vec<Rc<Fn(&Request, &mut ResponseWriter, &T)>>,
     not_found: Option<Rc<Fn(&Request, &mut ResponseWriter, &T)>>,
     context: T,
@@ -105,7 +106,7 @@ impl<T: 'static + Clone> Http<T> {
     }
 
     /// Add a function to handle the given `path`.
-    pub fn handle_func(&mut self, expr: Regex, func: Rc<Fn(&Request, &mut ResponseWriter, &T)>) {
+    pub fn handle_func(&mut self, expr: Path, func: Rc<Fn(&Request, &mut ResponseWriter, &T)>) {
         self.routes.push(expr);
         self.route_handlers.push(func);
         assert_eq!(self.routes.len(), self.route_handlers.len());
@@ -124,11 +125,21 @@ impl<T: 'static + Clone> Http<T> {
 
         let mut index = 0;
         for expr in &self.routes {
-            if let Some((a, b)) = expr.find(route) {
-                if b - a > best_match.0 {
-                    info!("best match: {}", expr);
-                    best_match.0 = b - a;
-                    best_match.1 = Some(index);
+            match expr {
+                &Path::Exact(ref s) => {
+                    if s == route {
+                        info!("best match: {}", s);
+                        return Some(index);
+                    }
+                }
+                &Path::Regex(ref r) => {
+                    if let Some((a, b)) = r.find(route) {
+                        if b - a > best_match.0 {
+                            info!("best match: {}", r);
+                            best_match.0 = b - a;
+                            best_match.1 = Some(index);
+                        }
+                    }
                 }
             }
             index += 1;
