@@ -2,7 +2,6 @@ extern crate hayaku;
 extern crate regex;
 
 use hayaku::{Http, Path, Request, ResponseWriter};
-use regex::Regex;
 
 use std::io::Write;
 use std::rc::Rc;

@@ -12,7 +12,6 @@ An http library based on Golang's `net/http` written using Tokio and Futures.
 """
 
 [dependencies]
-chomp = "0.2.4"
 log = "0.3.6"
 futures = "0.1.1"
 tokio-core = "0.1.0"
@@ -20,6 +19,7 @@ tokio-service = { git = "https://github.com/tokio-rs/tokio-service" }
 tk-bufstream = "0.1.0"
 minihttp = { git = "https://github.com/popravich/minihttp" }
 regex = "0.1"
+urlencoded = { git = "https://github.com/nokaa/urlencoded" }
 
 [dev-dependencies]
 rand = "0.3"

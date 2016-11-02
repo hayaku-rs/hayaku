@@ -10,7 +10,7 @@ use std::io::Write;
 use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 
-use hayaku::{Http, Request, ResponseWriter, Path, Status, forms};
+use hayaku::{Http, Request, ResponseWriter, Path, Status};
 use regex::Regex;
 use rand::Rng;
 
@@ -72,7 +72,8 @@ fn make_paste(req: &Request, res: &mut ResponseWriter, ctx: &Ctx) {
     };
 
     // Parse the body as urlencoded form data
-    let form = forms::parse_form(&buf).unwrap();
+    let form = hayaku::parse_urlencoded(&buf).unwrap();
+    // let form = forms::parse_form(&buf).unwrap();
 
     let filetype = form.get(&"filetype".to_string()).unwrap();
     let paste = form.get(&"paste".to_string()).unwrap();
@@ -80,16 +81,14 @@ fn make_paste(req: &Request, res: &mut ResponseWriter, ctx: &Ctx) {
     // Create the name of this paste to store in our database.
     // Name takes the form of [a-zA-Z0-9]+.{filetype}
     let mut name = gen_paste_name();
-    let filetype = ::std::str::from_utf8(filetype).unwrap();
     name.push('.');
-    name.push_str(filetype);
+    name.push_str(&filetype);
 
-    let paste_str = ::std::str::from_utf8(paste).unwrap();
 
     // Obtain a write lock on the context and insert the paste
     // into our db
     let mut lock = ctx.write().unwrap();
-    lock.db.insert(String::from(name.clone()), String::from(paste_str));
+    lock.db.insert(String::from(name.clone()), paste.clone());
 
     // Redirect the user to the url of the created paste
     if let Err(e) = res.redirect(Status::Found, name.as_bytes(), b"You are being redirected") {

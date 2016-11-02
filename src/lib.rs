@@ -6,8 +6,6 @@
  * */
 
 #[macro_use]
-extern crate chomp;
-#[macro_use]
 extern crate log;
 extern crate futures;
 extern crate tokio_core;
@@ -15,16 +13,15 @@ extern crate tokio_service;
 extern crate tk_bufstream;
 extern crate minihttp;
 extern crate regex;
+extern crate urlencoded;
 
-pub mod file;
-pub mod forms;
-// pub mod util;
 mod path;
 mod response;
 
 pub use path::Path;
 pub use response::ResponseWriter;
 pub use minihttp::{Request, Status};
+pub use urlencoded::parse_urlencoded;
 
 use futures::{Async, Finished, finished};
 use tokio_core::net::TcpStream;
