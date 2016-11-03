@@ -14,14 +14,18 @@ extern crate tk_bufstream;
 extern crate minihttp;
 extern crate regex;
 extern crate urlencoded;
+extern crate multipart;
 
 mod path;
+mod request;
 mod response;
 
 pub use path::Path;
 pub use response::ResponseWriter;
-pub use minihttp::{Request, Status};
-pub use urlencoded::parse_urlencoded;
+pub use request::Request;
+// pub use minihttp::{Request, Status};
+pub use minihttp::Status;
+// pub use urlencoded::parse_urlencoded;
 
 use futures::{Async, Finished, finished};
 use tokio_core::net::TcpStream;
@@ -45,12 +49,12 @@ pub struct Http<T: Clone> {
 }
 
 impl<T: 'static + Clone> Service for Http<T> {
-    type Request = Request;
+    type Request = minihttp::Request;
     type Response = Response;
     type Error = Error;
     type Future = Finished<Self::Response, Error>;
 
-    fn call(&self, req: Request) -> Self::Future {
+    fn call(&self, req: minihttp::Request) -> Self::Future {
         // Retrieve the function associated with this path
         let index = self.match_route(&req.path);
         let func = match index {
@@ -79,6 +83,7 @@ impl<T: 'static + Clone> Service for Http<T> {
         // intermediate structures
         finished(ResponseFn::new(move |res| {
             let mut res = ResponseWriter::new(res);
+            let req = Request::from(&req);
             // Run the function
             func(&req, &mut res, &context);
             // Return the future associated with finishing handling this request

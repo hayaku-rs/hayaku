@@ -65,18 +65,9 @@ fn get_paste(req: &Request, res: &mut ResponseWriter, ctx: &Ctx) {
 }
 
 fn make_paste(req: &Request, res: &mut ResponseWriter, ctx: &Ctx) {
-    // Get the contents of the request body
-    let buf = match req.body {
-        Some(ref b) => &b.data[..],
-        None => panic!("no body found"),
-    };
-
-    // Parse the body as urlencoded form data
-    let form = hayaku::parse_urlencoded(&buf).unwrap();
-    // let form = forms::parse_form(&buf).unwrap();
-
-    let filetype = form.get(&"filetype".to_string()).unwrap();
-    let paste = form.get(&"paste".to_string()).unwrap();
+    // Retrive the submitted form data
+    let filetype = req.form_value("filetype".to_string()).unwrap();
+    let paste = req.form_value("paste".to_string()).unwrap();
 
     // Create the name of this paste to store in our database.
     // Name takes the form of [a-zA-Z0-9]+.{filetype}

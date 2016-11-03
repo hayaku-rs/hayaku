@@ -21,6 +21,11 @@ minihttp = { git = "https://github.com/popravich/minihttp" }
 regex = "0.1"
 urlencoded = { git = "https://github.com/nokaa/urlencoded" }
 
+[dependencies.multipart]
+version = "0.8.1"
+default-features = false
+features = ["server"]
+
 [dev-dependencies]
 rand = "0.3"
 env_logger = "0.3.5"
