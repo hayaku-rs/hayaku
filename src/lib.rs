@@ -23,9 +23,7 @@ mod response;
 pub use path::Path;
 pub use response::ResponseWriter;
 pub use request::Request;
-// pub use minihttp::{Request, Status};
 pub use minihttp::Status;
-// pub use urlencoded::parse_urlencoded;
 
 use futures::{Async, Finished, finished};
 use tokio_core::net::TcpStream;

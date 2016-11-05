@@ -44,7 +44,15 @@ impl<'a> Request<'a> {
             match self.body {
                 &None => return None,
                 &Some(ref b) => {
-                    let m = parse_urlencoded(&b.data[..]).unwrap();
+                    let m = match parse_urlencoded(&b.data[..]) {
+                        Ok(m) => m,
+                        Err(e) => {
+                            // For now if we can't parse the form we
+                            // just return an empty map
+                            debug!("Error parsing form: {}", e);
+                            HashMap::new()
+                        }
+                    };
                     *self.form.borrow_mut() = Some(m);
                 }
             }

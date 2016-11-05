@@ -44,7 +44,7 @@ fn main() {
 }
 
 fn new_paste(_req: &Request, res: &mut ResponseWriter, _ctx: &Ctx) {
-    if let Err(e) = res.write_file("examples/new.html") {
+    if let Err(e) = res.send_file("examples/new.html") {
         error!("{}", e);
     }
 }

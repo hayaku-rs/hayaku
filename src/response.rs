@@ -79,7 +79,7 @@ impl ResponseWriter {
         self.res_writer.steal_socket()
     }
 
-    pub fn write_file<P: AsRef<Path>>(&mut self, filename: P) -> io::Result<()> {
+    pub fn send_file<P: AsRef<Path>>(&mut self, filename: P) -> io::Result<()> {
         let mut file = try!(fs::File::open(filename));
         let mut buf = Vec::new();
         try!(file.read_to_end(&mut buf));
