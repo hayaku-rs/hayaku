@@ -83,7 +83,7 @@ impl ResponseWriter {
         let mut file = try!(fs::File::open(filename));
         let mut buf = Vec::new();
         try!(file.read_to_end(&mut buf));
-        self.write_all(&mut buf)
+        self.write_all(&buf)
     }
 
     pub fn redirect(&mut self, status: Status, location: &[u8], data: &[u8]) -> io::Result<()> {

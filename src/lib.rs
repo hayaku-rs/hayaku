@@ -58,9 +58,9 @@ impl<T: 'static + Clone> Service for Http<T> {
         let func = match index {
             Some(i) => self.route_handlers[i].clone(),
             None => {
-                match &self.not_found {
-                    &Some(ref f) => f.clone(),
-                    &None => {
+                match self.not_found {
+                    Some(ref f) => f.clone(),
+                    None => {
                         return finished(ResponseFn::new(move |res| {
                             let mut res = ResponseWriter::new(res);
                             res.status(Status::NotFound);
@@ -125,14 +125,14 @@ impl<T: 'static + Clone> Http<T> {
 
         let mut index = 0;
         for expr in &self.routes {
-            match expr {
-                &Path::Exact(ref s) => {
+            match *expr {
+                Path::Exact(ref s) => {
                     if s == route {
                         info!("best match: {}", s);
                         return Some(index);
                     }
                 }
-                &Path::Regex(ref r) => {
+                Path::Regex(ref r) => {
                     if let Some((a, b)) = r.find(route) {
                         if b - a > best_match.0 {
                             info!("best match: {}", r);

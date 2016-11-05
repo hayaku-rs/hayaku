@@ -50,15 +50,15 @@ fn new_paste(_req: &Request, res: &mut ResponseWriter, _ctx: &Ctx) {
 }
 
 fn get_paste(req: &Request, res: &mut ResponseWriter, ctx: &Ctx) {
-    let ref path = req.path;
+    let path = req.path;
     info!("path: {}", path);
 
     // Obtain a read lock on the context and read from the database
     // sending the results if found, otherwise sending a 404
     let lock = ctx.read().unwrap();
     if let Some(p) = lock.db.get(&path[1..]) {
-        res.add_header("Content-Type", "text/plain; charset=utf-8".as_bytes());
-        res.write_all(&mut p.as_bytes()).unwrap();
+        res.add_header("Content-Type", b"text/plain; charset=utf-8");
+        res.write_all(p.as_bytes()).unwrap();
     } else {
         not_found(req, res, ctx);
     }
@@ -97,6 +97,5 @@ fn not_found(_req: &Request, res: &mut ResponseWriter, _ctx: &Ctx) {
 
 /// Generate a unique id of length 10 from the set of ascii characters
 fn gen_paste_name() -> String {
-    let s: String = rand::thread_rng().gen_ascii_chars().take(10).collect();
-    s
+    rand::thread_rng().gen_ascii_chars().take(10).collect()
 }

@@ -39,11 +39,11 @@ impl<'a> Request<'a> {
         self.request.transfer_encoding()
     }
 
-    pub fn form_value<'b>(&'b self, key: String) -> Option<String> {
+    pub fn form_value(&self, key: String) -> Option<String> {
         if *self.form.borrow() == None {
-            match self.body {
-                &None => return None,
-                &Some(ref b) => {
+            match *self.body {
+                None => return None,
+                Some(ref b) => {
                     let m = match parse_urlencoded(&b.data[..]) {
                         Ok(m) => m,
                         Err(e) => {
@@ -60,7 +60,7 @@ impl<'a> Request<'a> {
 
         match *self.form.borrow() {
             Some(ref map) => {
-                match map.get(&key).clone() {
+                match map.get(&key) {
                     None => None,
                     Some(s) => Some(s.clone()),
                 }
@@ -79,7 +79,7 @@ impl<'a> From<&'a minihttp::Request> for Request<'a> {
             headers: &req.headers,
             body: &req.body,
             peer_addr: &req.peer_addr,
-            request: &req,
+            request: req,
             form: RefCell::new(None),
         }
     }
