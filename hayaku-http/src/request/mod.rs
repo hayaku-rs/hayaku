@@ -31,7 +31,7 @@ impl<'a> Request<'a> {
         self.request.content_type()
     }
 
-    pub fn content_length(&self) -> Option<usize> {
+    pub fn content_length(&self) -> Option<u64> {
         self.request.content_length()
     }
 

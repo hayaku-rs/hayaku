@@ -25,7 +25,7 @@ pub use response::ResponseWriter;
 pub use request::Request;
 pub use minihttp::Status;
 
-use futures::{Async, Finished, finished};
+use futures::{Finished, finished};
 use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
 use tokio_service::Service;
@@ -89,9 +89,9 @@ impl<T: 'static + Clone> Service for Http<T> {
         }))
     }
 
-    fn poll_ready(&self) -> Async<()> {
+    /*fn poll_ready(&self) -> Async<()> {
         Async::Ready(())
-    }
+    }*/
 }
 
 impl<T: 'static + Clone> Http<T> {
@@ -115,7 +115,7 @@ impl<T: 'static + Clone> Http<T> {
     /// Run the server
     pub fn listen_and_serve(self, addr: SocketAddr) {
         let mut lp = Core::new().unwrap();
-        minihttp::serve(&lp.handle(), addr, self);
+        minihttp::serve(&lp.handle(), addr, move || Ok(self.clone()));
         lp.run(futures::empty::<(), ()>()).unwrap()
     }
 

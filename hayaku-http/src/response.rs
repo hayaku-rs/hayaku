@@ -80,9 +80,9 @@ impl ResponseWriter {
     }
 
     pub fn send_file<P: AsRef<Path>>(&mut self, filename: P) -> io::Result<()> {
-        let mut file = try!(fs::File::open(filename));
+        let mut file = fs::File::open(filename)?;
         let mut buf = Vec::new();
-        try!(file.read_to_end(&mut buf));
+        file.read_to_end(&mut buf)?;
         self.write_all(&buf)
     }
 

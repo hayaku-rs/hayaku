@@ -17,3 +17,9 @@ impl From<String> for Path {
         Path::Exact(path)
     }
 }
+
+impl From<&'static str> for Path {
+    fn from(path: &str) -> Path {
+        Path::Exact(path.to_string())
+    }
+}
