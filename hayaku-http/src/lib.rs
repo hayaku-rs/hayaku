@@ -32,18 +32,22 @@ use tokio_service::Service;
 use tk_bufstream::IoBuf;
 use minihttp::{Error, ResponseFn};
 
-use std::io::Write;
 use std::net::SocketAddr;
 use std::rc::Rc;
+
+// TODO(nokaa): We probably want to enforce the Clone trait bound on `T`
+// here. We can't do this until https://github.com/rust-lang/rust/issues/21903
+// is resovled. This shouldn't be a problem because when we use this type we
+// are constraining `T` to be Clone.
+pub type RequestHandler<T> = Fn(&Request, &mut ResponseWriter, &T);
 
 type Response = ResponseFn<Finished<IoBuf<TcpStream>, Error>, TcpStream>;
 
 #[derive(Clone)]
 pub struct Http<T: Clone> {
-    routes: Vec<Path>,
-    route_handlers: Vec<Rc<Fn(&Request, &mut ResponseWriter, &T)>>,
+    handler: Rc<RequestHandler<T>>,
     not_found: Option<Rc<Fn(&Request, &mut ResponseWriter, &T)>>,
-    context: T,
+    context: Rc<T>,
 }
 
 impl<T: 'static + Clone> Service for Http<T> {
@@ -53,63 +57,29 @@ impl<T: 'static + Clone> Service for Http<T> {
     type Future = Finished<Self::Response, Error>;
 
     fn call(&self, req: minihttp::Request) -> Self::Future {
-        // Retrieve the function associated with this path
-        let index = self.match_route(&req.path);
-        let func = match index {
-            Some(i) => self.route_handlers[i].clone(),
-            None => {
-                match self.not_found {
-                    Some(ref f) => f.clone(),
-                    None => {
-                        return finished(ResponseFn::new(move |res| {
-                            let mut res = ResponseWriter::new(res);
-                            res.status(Status::NotFound);
-                            if let Err(e) = res.write_all(b"404 - Page not found") {
-                                error!("{}", e);
-                            }
-                            res.done()
-                        }));
-                    }
-                }
-            }
-        };
+        // We declare these variables here to satisfy lifetime requirements.
+        // Note that as these are both Rc (smart pointers) we can clone them
+        // without issue.
+        let handler = self.handler.clone();
         let context = self.context.clone();
 
-        // Note: rather than allocating a response object, we return
-        // a lambda that pushes headers into `ResponseWriter` which
-        // writes them directly into response buffer without allocating
-        // intermediate structures
         finished(ResponseFn::new(move |res| {
             let mut res = ResponseWriter::new(res);
             let req = Request::from(&req);
-            // Run the function
-            func(&req, &mut res, &context);
-            // Return the future associated with finishing handling this request
+            handler(&req, &mut res, &context);
             res.done()
         }))
     }
-
-    /*fn poll_ready(&self) -> Async<()> {
-        Async::Ready(())
-    }*/
 }
 
 impl<T: 'static + Clone> Http<T> {
     /// Create a new Http handler
-    pub fn new(context: T) -> Http<T> {
+    pub fn new(handler: Rc<RequestHandler<T>>, context: T) -> Http<T> {
         Http {
-            routes: Vec::new(),
-            route_handlers: Vec::new(),
+            handler: handler,
             not_found: None,
-            context: context,
+            context: Rc::new(context),
         }
-    }
-
-    /// Add a function to handle the given `path`.
-    pub fn handle_func(&mut self, expr: Path, func: Rc<Fn(&Request, &mut ResponseWriter, &T)>) {
-        self.routes.push(expr);
-        self.route_handlers.push(func);
-        assert_eq!(self.routes.len(), self.route_handlers.len());
     }
 
     /// Run the server
@@ -117,34 +87,5 @@ impl<T: 'static + Clone> Http<T> {
         let mut lp = Core::new().unwrap();
         minihttp::serve(&lp.handle(), addr, move || Ok(self.clone()));
         lp.run(futures::empty::<(), ()>()).unwrap()
-    }
-
-    fn match_route(&self, route: &str) -> Option<usize> {
-        // The (size, index) of the best match
-        let mut best_match = (0, None);
-
-        let mut index = 0;
-        for expr in &self.routes {
-            match *expr {
-                Path::Exact(ref s) => {
-                    if s == route {
-                        info!("best match: {}", s);
-                        return Some(index);
-                    }
-                }
-                Path::Regex(ref r) => {
-                    if let Some((a, b)) = r.find(route) {
-                        if b - a > best_match.0 {
-                            info!("best match: {}", r);
-                            best_match.0 = b - a;
-                            best_match.1 = Some(index);
-                        }
-                    }
-                }
-            }
-            index += 1;
-        }
-
-        best_match.1
     }
 }
