@@ -1,0 +1,11 @@
+[package]
+name = "hayaku-path"
+version = "0.1.0"
+authors = ["nokaa <nokaa@cock.li>"]
+
+[dependencies]
+log = "0.3.6"
+quick-error = "1.1.0"
+
+[dependencies.hayaku-http]
+path = "../hayaku-http"
