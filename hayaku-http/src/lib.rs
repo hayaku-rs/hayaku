@@ -16,10 +16,14 @@ extern crate regex;
 extern crate urlencoded;
 extern crate multipart;
 
+mod handler;
+mod method;
 mod path;
 mod request;
 mod response;
 
+pub use handler::Handler;
+pub use method::Method;
 pub use path::Path;
 pub use response::ResponseWriter;
 pub use request::Request;
@@ -44,13 +48,13 @@ pub type RequestHandler<T> = Fn(&Request, &mut ResponseWriter, &T);
 type Response = ResponseFn<Finished<IoBuf<TcpStream>, Error>, TcpStream>;
 
 #[derive(Clone)]
-pub struct Http<T: Clone> {
-    handler: Rc<RequestHandler<T>>,
+pub struct Http<T: Clone, H: Clone + Handler<T>> {
+    handler: H,
     not_found: Option<Rc<Fn(&Request, &mut ResponseWriter, &T)>>,
-    context: Rc<T>,
+    context: T,
 }
 
-impl<T: 'static + Clone> Service for Http<T> {
+impl<T: 'static + Clone, H: 'static + Clone + Handler<T>> Service for Http<T, H> {
     type Request = minihttp::Request;
     type Response = Response;
     type Error = Error;
@@ -66,19 +70,19 @@ impl<T: 'static + Clone> Service for Http<T> {
         finished(ResponseFn::new(move |res| {
             let mut res = ResponseWriter::new(res);
             let req = Request::from(&req);
-            handler(&req, &mut res, &context);
+            handler.handler(&req, &mut res, &context);
             res.done()
         }))
     }
 }
 
-impl<T: 'static + Clone> Http<T> {
+impl<T: 'static + Clone, H: 'static + Clone + Handler<T>> Http<T, H> {
     /// Create a new Http handler
-    pub fn new(handler: Rc<RequestHandler<T>>, context: T) -> Http<T> {
+    pub fn new(handler: H, context: T) -> Http<T, H> {
         Http {
             handler: handler,
             not_found: None,
-            context: Rc::new(context),
+            context: context,
         }
     }
 

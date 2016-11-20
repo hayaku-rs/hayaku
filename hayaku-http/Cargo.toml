@@ -1,5 +1,5 @@
 [package]
-name = "hayaku"
+name = "hayaku-http"
 version = "0.1.0"
 authors = ["nokaa <nokaa@cock.li>"]
 license = "AGPLv3"

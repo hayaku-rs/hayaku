@@ -1,6 +1,8 @@
 use minihttp::{self, enums, request};
 use urlencoded::parse_urlencoded;
 
+use super::Method;
+
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -8,7 +10,7 @@ use std::net::SocketAddr;
 // mod multipart;
 
 pub struct Request<'a> {
-    pub method: &'a enums::Method,
+    pub method: Method,
     pub path: &'a String,
     pub version: &'a enums::Version,
     pub headers: &'a Vec<(enums::Header, String)>,
@@ -73,7 +75,7 @@ impl<'a> Request<'a> {
 impl<'a> From<&'a minihttp::Request> for Request<'a> {
     fn from(req: &'a minihttp::Request) -> Request<'a> {
         Request {
-            method: &req.method,
+            method: Method::from(&req.method),
             path: &req.path,
             version: &req.version,
             headers: &req.headers,
