@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct TrieNode<T: Clone> {
     /// The key associated with this node
@@ -21,6 +23,62 @@ impl<T: Clone> TrieNode<T> {
             children: Vec::new(),
             param: false,
         }
+    }
+
+    pub fn get(&self, key: &str) -> Option<(Option<T>, HashMap<String, String>)> {
+        let mut params = HashMap::new();
+
+        let val = self.get_recurse(key, &mut params);
+        if val.is_some() {
+            Some((val, params))
+        } else {
+            None
+        }
+    }
+
+    fn get_recurse(&self, key: &str, map: &mut HashMap<String, String>) -> Option<T> {
+        if self.param {
+            if key.contains('/') {
+                let keys = splitn(key, 2, '/');
+                map.insert(self.key.clone(), keys[0].clone());
+                return self.get_children(&keys[1], map);
+            } else {
+                map.insert(self.key.clone(), key.to_string());
+                return self.value.clone();
+            }
+        } else {
+            let match_len = get_match_len(&self.key, key);
+            if match_len == self.key.len() {
+                if match_len == key.len() {
+                    return self.value.clone();
+                } else {
+                    let key = &key[match_len..];
+                    return self.get_children(key, map);
+                }
+            }
+        }
+
+        None
+    }
+
+    fn get_children(&self, key: &str, map: &mut HashMap<String, String>) -> Option<T> {
+        // Match against non-param children first.
+        // We favor a static match over a dynamic one.
+        let non_param_children = self.children.iter().filter(|c| !c.param);
+        for child in non_param_children {
+            let val = child.get_recurse(key, map);
+            if val.is_some() {
+                return val;
+            }
+        }
+        let param_children = self.children.iter().filter(|c| c.param);
+        for child in param_children {
+            let val = child.get_recurse(key, map);
+            if val.is_some() {
+                return val;
+            }
+        }
+        return None;
     }
 
     /// Create a new child node with the given key-value pair and add it
@@ -218,6 +276,29 @@ fn get_params_indices(path: &str) -> Vec<(usize, usize)> {
     indices
 }
 
+fn splitn(s: &str, n: usize, pat: char) -> Vec<String> {
+    let mut n = n;
+    let mut strings = Vec::new();
+    let mut buf = String::new();
+
+    for ch in s.chars() {
+        if n <= 1 {
+            buf.push(ch);
+            continue;
+        }
+        if ch == pat {
+            n -= 1;
+            strings.push(buf);
+            buf = String::new();
+            buf.push(ch);
+        } else {
+            buf.push(ch);
+        }
+    }
+    strings.push(buf);
+    strings
+}
+
 #[cfg(test)]
 mod test {
     use super::{get_match_len, TrieNode};
@@ -233,17 +314,19 @@ mod test {
 
     #[test]
     fn single_insert() {
+        let data = "Data";
         let mut trie = TrieNode::new();
-        trie.insert("/", "Data");
+        trie.insert("/", data);
 
         let trie2 = TrieNode {
             key: "/".to_string(),
-            value: Some("Data"),
+            value: Some(data),
             children: Vec::new(),
             param: false,
         };
 
         assert_eq!(trie, trie2);
+        assert_eq!(trie.get("/").unwrap().0, Some(data));
     }
 
     #[test]
@@ -265,6 +348,8 @@ mod test {
         };
 
         assert_eq!(trie, trie2);
+        assert_eq!(trie.get("/").unwrap().0, Some("Data"));
+        assert_eq!(trie.get("/2").unwrap().0, Some("Data2"));
     }
 
     #[test]
@@ -292,6 +377,9 @@ mod test {
         };
 
         assert_eq!(trie, trie2);
+        assert_eq!(trie.get("/"), None);
+        assert_eq!(trie.get("/1").unwrap().0, Some("Data"));
+        assert_eq!(trie.get("/2").unwrap().0, Some("Data2"));
     }
 
     #[test]
@@ -312,6 +400,11 @@ mod test {
         };
 
         assert_eq!(trie, trie2);
+        assert_eq!(trie.get("/"), None);
+        let (val, map) = trie.get("/cock").unwrap();
+        assert_eq!(val, Some("Data"));
+        let param = map.get(&"test".to_string());
+        assert_eq!(param, Some(&"cock".to_string()));
     }
 
     #[test]
@@ -333,6 +426,11 @@ mod test {
         };
 
         assert_eq!(trie, trie2);
+        assert_eq!(trie.get("/").unwrap().0, Some("Data"));
+        let (val, map) = trie.get("/cock").unwrap();
+        assert_eq!(val, Some("Data2"));
+        let param = map.get(&"test".to_string());
+        assert_eq!(param, Some(&"cock".to_string()));
     }
 
     #[test]
@@ -359,5 +457,14 @@ mod test {
         };
 
         assert_eq!(trie, trie2);
+        let (val, map) = trie.get("/cock").unwrap();
+        assert_eq!(val, Some("Data"));
+        let param = map.get(&"test".to_string());
+        assert_eq!(param, Some(&"cock".to_string()));
+
+        let (val, map) = trie.get("/horse/cock").unwrap();
+        assert_eq!(val, Some("Data2"));
+        let param = map.get(&"test".to_string());
+        assert_eq!(param, Some(&"horse".to_string()));
     }
 }
