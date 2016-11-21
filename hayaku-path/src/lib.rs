@@ -60,7 +60,7 @@ impl<T: Clone> Router<T> {
         }
     }
 
-    /// Registers a nwe request handle with the given path and method.
+    /// Registers a new request handle with the given path and method.
     ///
     /// For GET, POST, PUT, PATCH, and DELETE requests the respective
     /// shortcut functions can be used.
@@ -95,10 +95,19 @@ impl<T: Clone> Router<T> {
 
 impl<T: Clone> Handler<T> for Router<T> {
     // Handler makes the router implement the fasthttp.ListenAndServe interface.
-    fn handler(&self, req: &Request, _res: &mut ResponseWriter, _ctx: &T) {
-        let _path = req.path;
+    fn handler(&self, req: &Request, res: &mut ResponseWriter, ctx: &T) {
+        let path = req.path;
         let method = &req.method;
-        if let Some(_root) = self.trees.get(method) {
+        if let Some(root) = self.trees.get(method) {
+            match root.get(path) {
+                Some((val, _map)) => {
+                    val.unwrap()(req, res, ctx);
+                }
+                None => {
+                    // Serve 404
+                    println!("404");
+                }
+            }
         }
     }
 }

@@ -78,7 +78,7 @@ impl<T: Clone> TrieNode<T> {
                 return val;
             }
         }
-        return None;
+        None
     }
 
     /// Create a new child node with the given key-value pair and add it
