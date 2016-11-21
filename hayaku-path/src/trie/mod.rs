@@ -52,72 +52,66 @@ impl<T: Clone> TrieNode<T> {
                 self.key = key[0..start].to_string();
                 self.insert_param(key, value, &params);
             }
-        } else {
-            // Non-empty tree
 
+            // Non-empty tree cases
+        } else if !self.param {
             // This node is not a param
-            if !self.param {
-                // Get the length of the match for our nodes
-                // NOTE: The length of the match should always be
-                // at least 1. We disallow routes that do not start
-                // with '/'.
-                let match_len = get_match_len(&self.key, &key);
 
-                // If the length of the match is the length of this node's key,
-                // we do not need to split the node.
-                if match_len == self.key.len() {
-                    let key = key[match_len..].to_string();
-                    // This failing implies that we were given two of the same key
-                    assert!(!key.is_empty());
+            // Get the length of the match for our nodes
+            // NOTE: The length of the match should always be
+            // at least 1. We disallow routes that do not start
+            // with '/'.
+            let match_len = get_match_len(&self.key, &key);
 
-                    let params = get_params_indices(&key);
-                    // If there are no children, we just add a new node. No need to
-                    // worry about another node with a matching prefix.
-                    if self.children.is_empty() {
-                        if params.is_empty() {
-                            self.add_new_child(key, Some(value), false);
-                        } else {
-                            let (start, _) = params[0];
-                            // The key begins with a param
-                            if start == 0 {
-                                self.insert_param(key, value, &params);
-                            } else {
-                                // The key begins with a static string
-                                self.insert_children(key, value, &params);
-                            }
-                        }
-                    } else {
-                        self.insert_children(key, value, &params);
-                    }
-                } else {
-                    // Match length was less than the length of this node's key.
-                    // Split node into two seperate nodes
-                    let child_key = self.key[match_len..].to_string();
-                    self.key = self.key[0..match_len].to_string();
-                    // TODO(nokaa): Cloning should be fine since this is an Rc
-                    let child_value = self.value.clone();
-                    self.add_new_child(child_key, child_value, false);
-                    self.value = None;
+            // If the length of the match is the length of this node's key,
+            // we do not need to split the node.
+            if match_len == self.key.len() {
+                let key = key[match_len..].to_string();
+                // This failing implies that we were given two of the same key
+                assert!(!key.is_empty());
 
-                    // Insert new node
-                    let key = key[match_len..].to_string();
-                    // This failing implies that we were given two of the same key
-                    assert!(!key.is_empty());
-
-                    /*if self.children.is_empty() {
+                let params = get_params_indices(&key);
+                // If there are no children, we just add a new node. No need to
+                // worry about another node with a matching prefix.
+                if self.children.is_empty() {
+                    if params.is_empty() {
                         self.add_new_child(key, Some(value), false);
                     } else {
-                        self.insert_children(key, value, &[]);
-                    }*/
-                    self.insert_children(key, value, &[]);
+                        let (start, _) = params[0];
+                        // The key begins with a param
+                        if start == 0 {
+                            self.insert_param(key, value, &params);
+                        } else {
+                            // The key begins with a static string
+                            self.insert_children(key, value, &params);
+                        }
+                    }
+                } else {
+                    self.insert_children(key, value, &params);
                 }
             } else {
-                // Current node is a param
-                let match_len = get_match_len(&self.key, &key[1..]);
-                let key = key[match_len + 1..].to_string();
-                let params = get_params_indices(&key);
-                self.insert_children(key, value, &params);
+                // Match length was less than the length of this node's key.
+                // Split node into two seperate nodes
+                let child_key = self.key[match_len..].to_string();
+                self.key = self.key[0..match_len].to_string();
+                // TODO(nokaa): Cloning should be fine since this is an Rc
+                let child_value = self.value.clone();
+                self.add_new_child(child_key, child_value, false);
+                self.value = None;
+
+                // Insert new node
+                let key = key[match_len..].to_string();
+                // This failing implies that we were given two of the same key
+                assert!(!key.is_empty());
+
+                self.insert_children(key, value, &[]);
             }
+        } else {
+            // Current node is a param
+            let match_len = get_match_len(&self.key, &key[1..]);
+            let key = key[match_len + 1..].to_string();
+            let params = get_params_indices(&key);
+            self.insert_children(key, value, &params);
         }
     }
 
@@ -187,10 +181,8 @@ impl<T: Clone> TrieNode<T> {
 fn get_match_len(a: &str, b: &str) -> usize {
     let mut match_len = 0;
     for (ac, bc) in a.chars().zip(b.chars()) {
-        if ac == bc {
+        if ac == bc && bc != ':' {
             match_len += 1;
-        } else if bc == ':' {
-            break;
         } else {
             break;
         }
