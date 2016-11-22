@@ -10,6 +10,7 @@ mod trie;
 use hayaku_http::{Handler, Method, Request, RequestHandler, ResponseWriter};
 
 use std::collections::HashMap;
+use std::io::Write;
 use std::rc::Rc;
 
 pub use error::Error;
@@ -60,6 +61,62 @@ impl<T: Clone> Router<T> {
         }
     }
 
+    /// `get` is a shortcut for `Self::handle(Method::Get, path, handle)`.
+    pub fn get<S: Into<String>>(&mut self,
+                                path: S,
+                                handle: Rc<RequestHandler<T>>)
+                                -> Result<(), Error> {
+        self.handle(Method::Get, path, handle)
+    }
+
+    /// `head` is a shortcut for `Self::handle(Method::Head, path, handle)`.
+    pub fn head<S: Into<String>>(&mut self,
+                                 path: S,
+                                 handle: Rc<RequestHandler<T>>)
+                                 -> Result<(), Error> {
+        self.handle(Method::Head, path, handle)
+    }
+
+    /// `options` is a shortcut for `Self::handle(Method::Options, path, handle)`.
+    pub fn options<S: Into<String>>(&mut self,
+                                    path: S,
+                                    handle: Rc<RequestHandler<T>>)
+                                    -> Result<(), Error> {
+        self.handle(Method::Options, path, handle)
+    }
+
+    /// `post` is a shortcut for `Self::handle(Method::Post, path, handle)`.
+    pub fn post<S: Into<String>>(&mut self,
+                                 path: S,
+                                 handle: Rc<RequestHandler<T>>)
+                                 -> Result<(), Error> {
+        self.handle(Method::Post, path, handle)
+    }
+
+    /// `put` is a shortcut for `Self::handle(Method::Put, path, handle)`.
+    pub fn put<S: Into<String>>(&mut self,
+                                path: S,
+                                handle: Rc<RequestHandler<T>>)
+                                -> Result<(), Error> {
+        self.handle(Method::Put, path, handle)
+    }
+
+    /// `patch` is a shortcut for `Self::handle(Method::Patch, path, handle)`.
+    pub fn patch<S: Into<String>>(&mut self,
+                                  path: S,
+                                  handle: Rc<RequestHandler<T>>)
+                                  -> Result<(), Error> {
+        self.handle(Method::Patch, path, handle)
+    }
+
+    /// `delete` is a shortcut for `Self::handle(Method::Delete, path, handle)`.
+    pub fn delete<S: Into<String>>(&mut self,
+                                   path: S,
+                                   handle: Rc<RequestHandler<T>>)
+                                   -> Result<(), Error> {
+        self.handle(Method::Delete, path, handle)
+    }
+
     /// Registers a new request handle with the given path and method.
     ///
     /// For GET, POST, PUT, PATCH, and DELETE requests the respective
@@ -105,7 +162,7 @@ impl<T: Clone> Handler<T> for Router<T> {
                 }
                 None => {
                     // Serve 404
-                    println!("404");
+                    res.write_all(b"404");
                 }
             }
         }
