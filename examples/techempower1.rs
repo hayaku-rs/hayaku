@@ -1,16 +1,18 @@
 extern crate hayaku;
-extern crate regex;
 extern crate rustc_serialize;
 
-use hayaku::{Http, Path, Request, ResponseWriter};
+use hayaku::{Http, Router, Request, ResponseWriter};
 
 use std::io::Write;
 use std::rc::Rc;
 
 fn main() {
     let addr = "127.0.0.1:3000".parse().unwrap();
-    let mut http = Http::new(());
-    http.handle_func(Path::from(String::from("/json")), Rc::new(json_handler));
+
+    let mut router = Router::new();
+    router.get("/json", Rc::new(json_handler)).unwrap();
+
+    let http = Http::new(router, ());
     http.listen_and_serve(addr);
 }
 

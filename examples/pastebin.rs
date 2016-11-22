@@ -2,7 +2,6 @@
 extern crate log;
 extern crate env_logger;
 extern crate rand;
-extern crate regex;
 extern crate hayaku;
 
 use std::collections::HashMap;
@@ -10,8 +9,7 @@ use std::io::Write;
 use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 
-use hayaku::{Http, Request, ResponseWriter, Path, Status};
-use regex::Regex;
+use hayaku::{Http, Request, ResponseWriter, Router, Status};
 use rand::Rng;
 
 type Ctx = Arc<RwLock<Context>>;
@@ -34,12 +32,12 @@ fn main() {
     let context = Context::new();
     let ctx = Arc::new(RwLock::new(context));
 
-    let mut http = Http::new(ctx);
-    http.handle_func(Path::from(String::from("/")), Rc::new(new_paste));
-    http.handle_func(Path::from(String::from("/new")), Rc::new(make_paste));
-    http.handle_func(Path::from(Regex::new("/[a-zA-Z0-9]+").unwrap()),
-                     Rc::new(get_paste));
-    http.handle_func(Path::from(String::from("/404")), Rc::new(not_found));
+    let mut router = Router::new();
+    router.get("/", Rc::new(new_paste)).unwrap();
+    router.post("/new", Rc::new(make_paste)).unwrap();
+    router.get("/:pastename", Rc::new(get_paste)).unwrap();
+    let http = Http::new(router, ctx);
+    // http.handle_func(Path::from(String::from("/404")), Rc::new(not_found));
     http.listen_and_serve(addr);
 }
 
