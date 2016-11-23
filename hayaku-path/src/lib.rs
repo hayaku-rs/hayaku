@@ -154,7 +154,9 @@ impl<T: Clone> Handler<T> for Router<T> {
     // Handler makes the router implement the fasthttp.ListenAndServe interface.
     fn handler(&self, req: &Request, res: &mut ResponseWriter, ctx: &T) {
         let path = req.path;
+        debug!("path: {}", path);
         let method = &req.method;
+        debug!("method: {:?}", method);
         if let Some(root) = self.trees.get(method) {
             match root.get(path) {
                 Some((val, _map)) => {

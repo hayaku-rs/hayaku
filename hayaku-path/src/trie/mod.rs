@@ -123,7 +123,7 @@ impl<T: Clone> TrieNode<T> {
 
             // If the length of the match is the length of this node's key,
             // we do not need to split the node.
-            if match_len == self.key.len() {
+            if match_len == self.key.len() || match_len == 0 {
                 let key = key[match_len..].to_string();
                 // This failing implies that we were given two of the same key
                 assert!(!key.is_empty());
@@ -466,5 +466,42 @@ mod test {
         assert_eq!(val, Some("Data2"));
         let param = map.get(&"test".to_string());
         assert_eq!(param, Some(&"horse".to_string()));
+    }
+
+    #[test]
+    fn senatus_01() {
+        let mut trie = TrieNode::new();
+        trie.insert("/", "/");
+        trie.insert("/b/:board", "/b/:board");
+        trie.insert("/b/:board/:thread", "/b/:board/:thread");
+
+        let trie2 =
+            TrieNode {
+                key: "/".to_string(),
+                value: Some("/"),
+                param: false,
+                children: vec![Box::new(TrieNode {
+                                   key: "b/".to_string(),
+                                   value: None,
+                                   param: false,
+                                   children: vec![Box::new(TrieNode {
+                                                      key: "board".to_string(),
+                                                      value: Some("/b/:board"),
+                                                      param: true,
+                                                      children: vec![Box::new(TrieNode {
+                        key: "/".to_string(),
+                        value: None,
+                        param: false,
+                        children: vec![Box::new(TrieNode {
+                            key: "thread".to_string(),
+                            value: Some("/b/:board/:thread"),
+                            param: true,
+                            children: Vec::new(),
+                        })],
+                    })],
+                                                  })],
+                               })],
+            };
+        assert_eq!(trie, trie2);
     }
 }
