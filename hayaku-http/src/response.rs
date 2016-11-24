@@ -99,6 +99,9 @@ impl Write for ResponseWriter {
         if !self.is_started() {
             self.status(Status::Ok);
         }
+        // TODO(nokaa): We want to make sure that the `Content-Type` header
+        // has not already been set.
+        self.add_header("Content-Type", b"text/html; charset=utf-8");
         self.add_length(len as u64);
         if self.done_headers() {
             self.write_body(buf);
