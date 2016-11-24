@@ -18,6 +18,7 @@ pub struct Request<'a> {
     pub peer_addr: &'a SocketAddr,
     request: &'a minihttp::Request,
     form: RefCell<Option<HashMap<String, String>>>,
+    pub user_data: RefCell<Vec<u8>>,
 }
 
 impl<'a> Request<'a> {
@@ -83,6 +84,7 @@ impl<'a> From<&'a minihttp::Request> for Request<'a> {
             peer_addr: &req.peer_addr,
             request: req,
             form: RefCell::new(None),
+            user_data: RefCell::new(Vec::new()),
         }
     }
 }
