@@ -1,5 +1,5 @@
 use minihttp::{self, enums, request};
-use urlencoded::parse_urlencoded;
+use urlencoded::{parse_urlencoded, parse_urlencoded_html_escape};
 
 use super::Method;
 
@@ -19,9 +19,25 @@ pub struct Request<'a> {
     request: &'a minihttp::Request,
     form: RefCell<Option<HashMap<String, String>>>,
     pub user_data: RefCell<Vec<u8>>,
+    sanitize_input: bool,
 }
 
 impl<'a> Request<'a> {
+    pub fn new(req: &'a minihttp::Request, sanitize: bool) -> Request<'a> {
+        Request {
+            method: Method::from(&req.method),
+            path: &req.path,
+            version: &req.version,
+            headers: &req.headers,
+            body: &req.body,
+            peer_addr: &req.peer_addr,
+            request: req,
+            form: RefCell::new(None),
+            user_data: RefCell::new(Vec::new()),
+            sanitize_input: sanitize,
+        }
+    }
+
     pub fn has_body(&self) -> bool {
         self.request.has_body()
     }
@@ -49,7 +65,12 @@ impl<'a> Request<'a> {
             match *self.body {
                 None => return None,
                 Some(ref b) => {
-                    let m = match parse_urlencoded(&b.data[..]) {
+                    let m = if self.sanitize_input {
+                        parse_urlencoded_html_escape(&b.data[..])
+                    } else {
+                        parse_urlencoded(&b.data[..])
+                    };
+                    let m = match m {
                         Ok(m) => m,
                         Err(e) => {
                             // For now if we can't parse the form we
@@ -71,22 +92,6 @@ impl<'a> Request<'a> {
                 }
             }
             None => unimplemented!(),
-        }
-    }
-}
-
-impl<'a> From<&'a minihttp::Request> for Request<'a> {
-    fn from(req: &'a minihttp::Request) -> Request<'a> {
-        Request {
-            method: Method::from(&req.method),
-            path: &req.path,
-            version: &req.version,
-            headers: &req.headers,
-            body: &req.body,
-            peer_addr: &req.peer_addr,
-            request: req,
-            form: RefCell::new(None),
-            user_data: RefCell::new(Vec::new()),
         }
     }
 }

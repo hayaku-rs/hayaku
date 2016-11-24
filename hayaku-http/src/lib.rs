@@ -50,6 +50,7 @@ type Response = ResponseFn<Finished<IoBuf<TcpStream>, Error>, TcpStream>;
 pub struct Http<T: Clone, H: Clone + Handler<T>> {
     handler: H,
     context: T,
+    sanitize_input: bool,
 }
 
 impl<T: 'static + Clone, H: 'static + Clone + Handler<T>> Service for Http<T, H> {
@@ -64,10 +65,11 @@ impl<T: 'static + Clone, H: 'static + Clone + Handler<T>> Service for Http<T, H>
         // without issue.
         let handler = self.handler.clone();
         let context = self.context.clone();
+        let sanitize = self.sanitize_input;
 
         finished(ResponseFn::new(move |res| {
             let mut res = ResponseWriter::new(res);
-            let req = Request::from(&req);
+            let req = Request::new(&req, sanitize);
             handler.handler(&req, &mut res, &context);
             res.done()
         }))
@@ -80,7 +82,14 @@ impl<T: 'static + Clone, H: 'static + Clone + Handler<T>> Http<T, H> {
         Http {
             handler: handler,
             context: context,
+            sanitize_input: false,
         }
+    }
+
+    /// Calling this method will cause form data to be HTML-escaped
+    /// when parsed.
+    pub fn sanitize(&mut self) {
+        self.sanitize_input = true;
     }
 
     /// Run the server
