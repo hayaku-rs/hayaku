@@ -37,7 +37,6 @@ fn main() {
     router.post("/new", Rc::new(make_paste)).unwrap();
     router.get("/:pastename", Rc::new(get_paste)).unwrap();
     let http = Http::new(router, ctx);
-    // http.handle_func(Path::from(String::from("/404")), Rc::new(not_found));
     http.listen_and_serve(addr);
 }
 
@@ -48,13 +47,16 @@ fn new_paste(_req: &Request, res: &mut ResponseWriter, _ctx: &Ctx) {
 }
 
 fn get_paste(req: &Request, res: &mut ResponseWriter, ctx: &Ctx) {
-    let path = req.path;
-    info!("path: {}", path);
+    // Get the path parameters from the request.
+    let params = hayaku::get_path_params(req);
+    // Get the value of the `pastename` parameter.
+    let pastename = params.get("pastename").unwrap();
+    info!("pastename: {}", pastename);
 
     // Obtain a read lock on the context and read from the database
     // sending the results if found, otherwise sending a 404
     let lock = ctx.read().unwrap();
-    if let Some(p) = lock.db.get(&path[1..]) {
+    if let Some(p) = lock.db.get(pastename) {
         res.add_header("Content-Type", b"text/plain; charset=utf-8");
         res.write_all(p.as_bytes()).unwrap();
     } else {

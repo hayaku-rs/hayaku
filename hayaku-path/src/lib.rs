@@ -1,8 +1,13 @@
+#![feature(proc_macro)]
+
 #[macro_use]
 extern crate log;
 extern crate hayaku_http;
 #[macro_use(quick_error)]
 extern crate quick_error;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde_json;
 
 mod error;
 mod trie;
@@ -18,6 +23,8 @@ pub use error::Error;
 use trie::TrieNode;
 
 type Tree<T> = HashMap<Method, TrieNode<Rc<RequestHandler<T>>>>;
+// type Tree<T> = HashMap<Method, TrieNode<Handler<T>>>;
+// type Handle<T> = Rc<RequestHandler<Context<T>>>;
 
 #[derive(Clone)]
 pub struct Router<T: Clone> {
@@ -159,14 +166,36 @@ impl<T: Clone> Handler<T> for Router<T> {
         debug!("method: {:?}", method);
         if let Some(root) = self.trees.get(method) {
             match root.get(path) {
-                Some((val, _map)) => {
+                Some((val, map)) => {
+                    let serialized = serde_json::to_vec(&map).unwrap();
+                    *req.user_data.borrow_mut() = serialized;
                     val.unwrap()(req, res, ctx);
                 }
                 None => {
                     // Serve 404
-                    res.write_all(b"404");
+                    res.write_all(b"404").unwrap();
                 }
             }
         }
     }
 }
+
+/*#[derive(Clone)]
+pub struct Context<T: Clone> {
+    pub user_ctx: T,
+    router_ctx: HashMap<String, String>,
+}
+
+impl<T: Clone> Context<T> {
+    pub fn new(user_ctx: T, router_ctx: HashMap<String, String>) -> Self {
+        Context {
+            user_ctx: user_ctx,
+            router_ctx: router_ctx,
+        }
+    }
+
+    pub fn get(&self, param: String) -> Option<&String> {
+        self.router_ctx.get(&param)
+    }
+}
+*/
