@@ -42,7 +42,9 @@ impl<'a> Request<'a> {
         self.request.transfer_encoding()
     }
 
-    pub fn form_value(&self, key: String) -> Option<String> {
+    pub fn form_value<S: Into<String>>(&self, key: S) -> Option<String> {
+        let key = key.into();
+
         if *self.form.borrow() == None {
             match *self.body {
                 None => return None,

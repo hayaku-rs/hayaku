@@ -66,8 +66,8 @@ fn get_paste(req: &Request, res: &mut ResponseWriter, ctx: &Ctx) {
 
 fn make_paste(req: &Request, res: &mut ResponseWriter, ctx: &Ctx) {
     // Retrive the submitted form data
-    let filetype = req.form_value("filetype".to_string()).unwrap();
-    let paste = req.form_value("paste".to_string()).unwrap();
+    let filetype = req.form_value("filetype").unwrap();
+    let paste = req.form_value("paste").unwrap();
 
     // Create the name of this paste to store in our database.
     // Name takes the form of [a-zA-Z0-9]+.{filetype}
