@@ -37,7 +37,6 @@ use tk_bufstream::IoBuf;
 use minihttp::{Error, ResponseFn};
 
 use std::net::SocketAddr;
-use std::rc::Rc;
 
 // TODO(nokaa): We probably want to enforce the Clone trait bound on `T`
 // here. We can't do this until https://github.com/rust-lang/rust/issues/21903
@@ -50,7 +49,6 @@ type Response = ResponseFn<Finished<IoBuf<TcpStream>, Error>, TcpStream>;
 #[derive(Clone)]
 pub struct Http<T: Clone, H: Clone + Handler<T>> {
     handler: H,
-    not_found: Option<Rc<Fn(&Request, &mut ResponseWriter, &T)>>,
     context: T,
 }
 
@@ -81,7 +79,6 @@ impl<T: 'static + Clone, H: 'static + Clone + Handler<T>> Http<T, H> {
     pub fn new(handler: H, context: T) -> Http<T, H> {
         Http {
             handler: handler,
-            not_found: None,
             context: context,
         }
     }
