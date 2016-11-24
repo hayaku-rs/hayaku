@@ -12,7 +12,7 @@ extern crate serde_json;
 mod error;
 mod trie;
 
-use hayaku_http::{Handler, Method, Request, RequestHandler, ResponseWriter};
+use hayaku_http::{Handler, Method, Request, RequestHandler, ResponseWriter, Status};
 
 use std::collections::HashMap;
 use std::io::Write;
@@ -23,8 +23,6 @@ pub use error::Error;
 use trie::TrieNode;
 
 type Tree<T> = HashMap<Method, TrieNode<Rc<RequestHandler<T>>>>;
-// type Tree<T> = HashMap<Method, TrieNode<Handler<T>>>;
-// type Handle<T> = Rc<RequestHandler<Context<T>>>;
 
 #[derive(Clone)]
 pub struct Router<T: Clone> {
@@ -34,7 +32,7 @@ pub struct Router<T: Clone> {
     /// For example if /foo/ is requested but a route only exists for /foo, the
     /// client is redirected to /foo with http status code 301 for GET requests
     /// and 307 for all other request methods.
-    redirect_trailing_slash: bool,
+    pub redirect_trailing_slash: bool,
     /// If enabled, the router tries to fix the current request path, if no
     /// handle is registered for it.
     /// First superfluous path elements like ../ or // are removed.
@@ -44,17 +42,20 @@ pub struct Router<T: Clone> {
     /// all other request methods.
     /// For example /FOO and /..//Foo could be redirected to /foo.
     /// `redirect_trailing_slash` is independent of this option.
-    redirect_fixed_path: bool,
+    pub redirect_fixed_path: bool,
     /// If enabled, the router checks if another method is allowed for the
     /// current route, if the current request can not be routed.
     /// If this is the case, the request is answered with `Method Not Allowed`
     /// and HTTP status code 405.
     /// If no other Method is allowed, the request is delegated to the NotFound
     /// handler.
-    handle_method_not_allowed: bool,
+    pub handle_method_not_allowed: bool,
     /// If enabled, the router automatically replies to OPTIONS requests.
     /// Custom OPTIONS handlers take priority over automatic replies.
-    handle_options: bool,
+    pub handle_options: bool,
+    /// Configurable handler which is called when no matching route is
+    /// found. If it is `None`, the default 404 handler is used.
+    not_found: Option<Rc<RequestHandler<T>>>,
 }
 
 impl<T: Clone> Router<T> {
@@ -65,7 +66,12 @@ impl<T: Clone> Router<T> {
             redirect_fixed_path: true,
             handle_method_not_allowed: true,
             handle_options: true,
+            not_found: None,
         }
+    }
+
+    pub fn set_not_found_handler(&mut self, handler: Rc<RequestHandler<T>>) {
+        self.not_found = Some(handler);
     }
 
     /// `get` is a shortcut for `Self::handle(Method::Get, path, handle)`.
@@ -172,30 +178,19 @@ impl<T: Clone> Handler<T> for Router<T> {
                     val.unwrap()(req, res, ctx);
                 }
                 None => {
-                    // Serve 404
-                    res.write_all(b"404").unwrap();
+                    if self.not_found.is_none() {
+                        // Default handler
+                        res.status(Status::NotFound);
+                        let msg = String::from("404, path \"") + path + &"\" not found :(";
+                        res.write_all(msg.as_bytes()).unwrap();
+                    } else {
+                        // We have already checked that self.not_found is not
+                        // `None`, so unwrapping should be okay.
+                        let handle = self.not_found.clone().unwrap();
+                        handle(req, res, ctx);
+                    }
                 }
             }
         }
     }
 }
-
-/*#[derive(Clone)]
-pub struct Context<T: Clone> {
-    pub user_ctx: T,
-    router_ctx: HashMap<String, String>,
-}
-
-impl<T: Clone> Context<T> {
-    pub fn new(user_ctx: T, router_ctx: HashMap<String, String>) -> Self {
-        Context {
-            user_ctx: user_ctx,
-            router_ctx: router_ctx,
-        }
-    }
-
-    pub fn get(&self, param: String) -> Option<&String> {
-        self.router_ctx.get(&param)
-    }
-}
-*/
