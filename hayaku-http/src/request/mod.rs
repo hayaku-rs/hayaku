@@ -65,10 +65,12 @@ impl<'a> Request<'a> {
             match *self.body {
                 None => return None,
                 Some(ref b) => {
+                    let body = &b.data[..];
+                    info!("Request body: {:?}", body);
                     let m = if self.sanitize_input {
-                        parse_urlencoded_html_escape(&b.data[..])
+                        parse_urlencoded_html_escape(body)
                     } else {
-                        parse_urlencoded(&b.data[..])
+                        parse_urlencoded(body)
                     };
                     let m = match m {
                         Ok(m) => m,

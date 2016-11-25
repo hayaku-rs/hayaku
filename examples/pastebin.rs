@@ -35,7 +35,9 @@ fn main() {
     let mut router = Router::new();
     router.get("/", Rc::new(new_paste)).unwrap();
     router.post("/new", Rc::new(make_paste)).unwrap();
-    router.get("/:pastename", Rc::new(get_paste)).unwrap();
+    router.get("/{pastename:[a-zA-Z0-9]+\\.[a-zA-Z0-9]+}",
+             Rc::new(get_paste))
+        .unwrap();
     let http = Http::new(router, ctx);
     http.listen_and_serve(addr);
 }
@@ -57,6 +59,7 @@ fn get_paste(req: &Request, res: &mut ResponseWriter, ctx: &Ctx) {
     // sending the results if found, otherwise sending a 404
     let lock = ctx.read().unwrap();
     if let Some(p) = lock.db.get(pastename) {
+        info!("paste_retrieved: {}", p);
         res.add_header("Content-Type", b"text/plain; charset=utf-8");
         res.write_all(p.as_bytes()).unwrap();
     } else {
@@ -68,6 +71,7 @@ fn make_paste(req: &Request, res: &mut ResponseWriter, ctx: &Ctx) {
     // Retrive the submitted form data
     let filetype = req.form_value("filetype").unwrap();
     let paste = req.form_value("paste").unwrap();
+    info!("paste: {}", paste);
 
     // Create the name of this paste to store in our database.
     // Name takes the form of [a-zA-Z0-9]+.{filetype}
