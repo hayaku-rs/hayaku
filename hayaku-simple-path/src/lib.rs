@@ -43,7 +43,7 @@ impl<T: Clone> Handler<T> for Router<T> {
             handle(req, res, ctx);
         } else {
             res.status(Status::NotFound);
-            let msg = String::from("404, path \"") + path + &"\" not found :(";
+            let msg = String::from("404, path \"") + path + "\" not found :(";
             res.write_all(msg.as_bytes()).unwrap();
 
         }

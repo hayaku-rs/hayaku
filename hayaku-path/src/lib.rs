@@ -182,7 +182,7 @@ impl<T: Clone> Handler<T> for Router<T> {
                     if self.not_found.is_none() {
                         // Default handler
                         res.status(Status::NotFound);
-                        let msg = String::from("404, path \"") + path + &"\" not found :(";
+                        let msg = String::from("404, path \"") + path + "\" not found :(";
                         res.write_all(msg.as_bytes()).unwrap();
                     } else {
                         // We have already checked that self.not_found is not
