@@ -5,6 +5,7 @@ extern crate log;
 extern crate hayaku_http;
 #[macro_use(quick_error)]
 extern crate quick_error;
+extern crate regex;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;

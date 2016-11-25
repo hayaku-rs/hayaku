@@ -78,7 +78,7 @@ impl<T: 'static + Clone, H: 'static + Clone + Handler<T>> Service for Http<T, H>
 
 impl<T: 'static + Clone, H: 'static + Clone + Handler<T>> Http<T, H> {
     /// Create a new Http handler
-    pub fn new(handler: H, context: T) -> Http<T, H> {
+    pub fn new(handler: H, context: T) -> Self {
         Http {
             handler: handler,
             context: context,

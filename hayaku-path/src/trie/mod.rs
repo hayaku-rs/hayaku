@@ -1,3 +1,4 @@
+use regex::Regex;
 use std::collections::HashMap;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -8,10 +9,12 @@ pub struct TrieNode<T: Clone> {
     value: Option<T>,
     /// All branches from this node
     children: Vec<Box<TrieNode<T>>>,
-    /// If true, this node represents a param.
-    /// Basically this node will match any input from '/' to '/'.
-    /// If `param` is true, `key` is the name of the param.
-    param: bool,
+    /// If Some(regex), this node represents a param.
+    /// This node will match anything fitting `regex`. If no
+    /// regex was passed with the param, the regex `[.+]` is
+    /// used, which matches (almost) any input.
+    /// If `param` is Some, `key` is the name of the param.
+    param: Option<Regex>,
 }
 
 impl<T: Clone> TrieNode<T> {
@@ -21,7 +24,7 @@ impl<T: Clone> TrieNode<T> {
             key: String::new(),
             value: None,
             children: Vec::new(),
-            param: false,
+            param: None,
         }
     }
 
@@ -37,14 +40,20 @@ impl<T: Clone> TrieNode<T> {
     }
 
     fn get_recurse(&self, key: &str, map: &mut HashMap<String, String>) -> Option<T> {
-        if self.param {
+        if self.param.is_some() {
             if key.contains('/') {
                 let keys = splitn(key, 2, '/');
-                map.insert(self.key.clone(), keys[0].clone());
-                return self.get_children(&keys[1], map);
+                let regex = self.param.clone().unwrap();
+                if regex.is_match(&keys[0]) {
+                    map.insert(self.key.clone(), keys[0].clone());
+                    return self.get_children(&keys[1], map);
+                }
             } else {
-                map.insert(self.key.clone(), key.to_string());
-                return self.value.clone();
+                let regex = self.param.clone().unwrap();
+                if regex.is_match(key) {
+                    map.insert(self.key.clone(), key.to_string());
+                    return self.value.clone();
+                }
             }
         } else {
             let match_len = get_match_len(&self.key, key);
@@ -64,14 +73,14 @@ impl<T: Clone> TrieNode<T> {
     fn get_children(&self, key: &str, map: &mut HashMap<String, String>) -> Option<T> {
         // Match against non-param children first.
         // We favor a static match over a dynamic one.
-        let non_param_children = self.children.iter().filter(|c| !c.param);
+        let non_param_children = self.children.iter().filter(|c| c.param.is_none());
         for child in non_param_children {
             let val = child.get_recurse(key, map);
             if val.is_some() {
                 return val;
             }
         }
-        let param_children = self.children.iter().filter(|c| c.param);
+        let param_children = self.children.iter().filter(|c| c.param.is_some());
         for child in param_children {
             let val = child.get_recurse(key, map);
             if val.is_some() {
@@ -83,7 +92,7 @@ impl<T: Clone> TrieNode<T> {
 
     /// Create a new child node with the given key-value pair and add it
     /// as a child to node `self`.
-    fn add_new_child(&mut self, key: String, value: Option<T>, param: bool) {
+    fn add_new_child(&mut self, key: String, value: Option<T>, param: Option<Regex>) {
         let child = TrieNode {
             key: key,
             value: value,
@@ -112,7 +121,7 @@ impl<T: Clone> TrieNode<T> {
             }
 
             // Non-empty tree cases
-        } else if !self.param {
+        } else if self.param.is_none() {
             // This node is not a param
 
             // Get the length of the match for our nodes
@@ -133,7 +142,7 @@ impl<T: Clone> TrieNode<T> {
                 // worry about another node with a matching prefix.
                 if self.children.is_empty() {
                     if params.is_empty() {
-                        self.add_new_child(key, Some(value), false);
+                        self.add_new_child(key, Some(value), None);
                     } else {
                         let (start, _) = params[0];
                         // The key begins with a param
@@ -154,7 +163,7 @@ impl<T: Clone> TrieNode<T> {
                 self.key = self.key[0..match_len].to_string();
                 // TODO(nokaa): Cloning should be fine since this is an Rc
                 let child_value = self.value.clone();
-                self.add_new_child(child_key, child_value, false);
+                self.add_new_child(child_key, child_value, None);
                 self.value = None;
 
                 // Insert new node
@@ -166,8 +175,7 @@ impl<T: Clone> TrieNode<T> {
             }
         } else {
             // Current node is a param
-            let match_len = get_match_len(&self.key, &key[1..]);
-            let key = key[match_len + 1..].to_string();
+            let key = end_of_param(&key);
             let params = get_params_indices(&key);
             self.insert_children(key, value, &params);
         }
@@ -186,14 +194,14 @@ impl<T: Clone> TrieNode<T> {
 
         // No matching node found, add new child
         if params.is_empty() {
-            self.add_new_child(key, Some(value), false);
+            self.add_new_child(key, Some(value), None);
         } else {
             let (start, _) = params[0];
             let mut child = TrieNode {
                 key: key[0..start].to_string(),
                 value: None,
                 children: Vec::new(),
-                param: false,
+                param: None,
             };
             child.insert(key[start..].to_string(), value);
             self.children.push(Box::new(child));
@@ -202,16 +210,17 @@ impl<T: Clone> TrieNode<T> {
 
     fn insert_param(&mut self, key: String, value: T, params: &[(usize, usize)]) {
         let (start, end) = params[0];
-        let param = key[start + 1..end].to_string();
+        // let param = key[start + 1..end].to_string();
+        let (param, regex) = parse_param(&key[start + 1..end - 1]);
         let params = &params[1..];
         if params.is_empty() && key.len() == end {
-            self.add_new_child(param, Some(value), true);
+            self.add_new_child(param, Some(value), Some(regex));
         } else {
             let mut child = TrieNode {
                 key: param,
                 value: None,
                 children: Vec::new(),
-                param: true,
+                param: Some(regex),
             };
             child.insert(key[end..].to_string(), value);
             self.children.push(Box::new(child));
@@ -223,9 +232,9 @@ impl<T: Clone> TrieNode<T> {
     // we need to split a node or create a new node upon insertion.
     fn is_match(&self, key: &str) -> bool {
         // If the given key marks a param
-        if key.starts_with(':') {
+        if key.starts_with('{') {
             // If the current node is a param
-            if self.param {
+            if self.param.is_some() {
                 return get_match_len(&self.key, &key[1..]) > 0;
             }
             return false;
@@ -234,12 +243,42 @@ impl<T: Clone> TrieNode<T> {
     }
 }
 
+fn end_of_param(path: &str) -> String {
+    match path.find('/') {
+        Some(i) => path[i..].to_string(),
+        None => String::new(),
+    }
+}
+
+fn parse_param(param: &str) -> (String, Regex) {
+    let mut param_name = String::new();
+    let mut regex = String::new();
+    let mut in_param = true;
+    for c in param.chars() {
+        match c {
+            ':' => in_param = false,
+            c => {
+                if in_param {
+                    param_name.push(c);
+                } else {
+                    regex.push(c);
+                }
+            }
+        }
+    }
+    if regex.is_empty() {
+        regex = ".+".to_string();
+    }
+    let regex = Regex::new(&regex).unwrap();
+    (param_name, regex)
+}
+
 /// Determines the length of the shared prefix of two strings.
 /// E.g. `get_match_len("apple", "ape") => 2`.
 fn get_match_len(a: &str, b: &str) -> usize {
     let mut match_len = 0;
     for (ac, bc) in a.chars().zip(b.chars()) {
-        if ac == bc && bc != ':' {
+        if ac == bc && bc != '{' {
             match_len += 1;
         } else {
             break;
@@ -250,29 +289,27 @@ fn get_match_len(a: &str, b: &str) -> usize {
 
 fn get_params_indices(path: &str) -> Vec<(usize, usize)> {
     let mut indices = Vec::new();
-    let mut in_param = false;
     let mut start = 0;
+    let mut braces = 0usize;
     for (i, c) in path.char_indices() {
         match c {
-            ':' => {
-                if in_param {
-                    panic!("TODO");
+            '{' => {
+                if braces == 0 {
+                    start = i;
                 }
-                start = i;
-                in_param = true;
+                braces += 1;
             }
-            '/' => {
-                if in_param {
-                    in_param = false;
-                    indices.push((start, i));
+            '}' => {
+                braces -= 1;
+                if braces == 0 {
+                    indices.push((start, i + 1));
                 }
             }
             _ => {}
         }
     }
-    if in_param {
-        indices.push((start, path.len()));
-    }
+    // If `in_param`, there is a missing `}`.
+    assert_eq!(braces, 0);
     indices
 }
 
@@ -302,6 +339,11 @@ fn splitn(s: &str, n: usize, pat: char) -> Vec<String> {
 #[cfg(test)]
 mod test {
     use super::{get_match_len, TrieNode};
+    use regex::Regex;
+
+    fn wild_regex() -> Regex {
+        Regex::new(".+").unwrap()
+    }
 
     #[test]
     fn match_len() {
@@ -322,7 +364,7 @@ mod test {
             key: "/".to_string(),
             value: Some(data),
             children: Vec::new(),
-            param: false,
+            param: None,
         };
 
         assert_eq!(trie, trie2);
@@ -342,9 +384,9 @@ mod test {
                                key: "2".to_string(),
                                value: Some("Data2"),
                                children: Vec::new(),
-                               param: false,
+                               param: None,
                            })],
-            param: false,
+            param: None,
         };
 
         assert_eq!(trie, trie2);
@@ -365,15 +407,15 @@ mod test {
                                key: "1".to_string(),
                                value: Some("Data"),
                                children: Vec::new(),
-                               param: false,
+                               param: None,
                            }),
                            Box::new(TrieNode {
                                key: "2".to_string(),
                                value: Some("Data2"),
                                children: Vec::new(),
-                               param: false,
+                               param: None,
                            })],
-            param: false,
+            param: None,
         };
 
         assert_eq!(trie, trie2);
@@ -385,7 +427,7 @@ mod test {
     #[test]
     fn single_insert_param() {
         let mut trie = TrieNode::new();
-        trie.insert("/:test", "Data");
+        trie.insert("/{test}", "Data");
 
         let trie2 = TrieNode {
             key: "/".to_string(),
@@ -394,9 +436,9 @@ mod test {
                                key: "test".to_string(),
                                value: Some("Data"),
                                children: Vec::new(),
-                               param: true,
+                               param: Some(wild_regex()),
                            })],
-            param: false,
+            param: None,
         };
 
         assert_eq!(trie, trie2);
@@ -411,7 +453,7 @@ mod test {
     fn multiple_insert_param() {
         let mut trie = TrieNode::new();
         trie.insert("/", "Data");
-        trie.insert("/:test", "Data2");
+        trie.insert("/{test}", "Data2");
 
         let trie2 = TrieNode {
             key: "/".to_string(),
@@ -420,9 +462,9 @@ mod test {
                                key: "test".to_string(),
                                value: Some("Data2"),
                                children: Vec::new(),
-                               param: true,
+                               param: Some(wild_regex()),
                            })],
-            param: false,
+            param: None,
         };
 
         assert_eq!(trie, trie2);
@@ -436,8 +478,8 @@ mod test {
     #[test]
     fn param_with_child() {
         let mut trie = TrieNode::new();
-        trie.insert("/:test", "Data");
-        trie.insert("/:test/cock", "Data2");
+        trie.insert("/{test}", "Data");
+        trie.insert("/{test}/cock", "Data2");
 
         let trie2 = TrieNode {
             key: "/".to_string(),
@@ -449,11 +491,11 @@ mod test {
                                                   key: "/cock".to_string(),
                                                   value: Some("Data2"),
                                                   children: Vec::new(),
-                                                  param: false,
+                                                  param: None,
                                               })],
-                               param: true,
+                               param: Some(wild_regex()),
                            })],
-            param: false,
+            param: None,
         };
 
         assert_eq!(trie, trie2);
@@ -472,36 +514,81 @@ mod test {
     fn senatus_01() {
         let mut trie = TrieNode::new();
         trie.insert("/", "/");
-        trie.insert("/b/:board", "/b/:board");
-        trie.insert("/b/:board/:thread", "/b/:board/:thread");
+        trie.insert("/b/{board}", "/b/:board");
+        trie.insert("/b/{board}/{thread}", "/b/:board/:thread");
 
-        let trie2 =
-            TrieNode {
-                key: "/".to_string(),
-                value: Some("/"),
-                param: false,
-                children: vec![Box::new(TrieNode {
-                                   key: "b/".to_string(),
-                                   value: None,
-                                   param: false,
-                                   children: vec![Box::new(TrieNode {
-                                                      key: "board".to_string(),
-                                                      value: Some("/b/:board"),
-                                                      param: true,
-                                                      children: vec![Box::new(TrieNode {
-                        key: "/".to_string(),
-                        value: None,
-                        param: false,
-                        children: vec![Box::new(TrieNode {
+        let trie2 = TrieNode {
+            key: "/".to_string(),
+            value: Some("/"),
+            param: None,
+            children: vec![Box::new(TrieNode {
+                               key: "b/".to_string(),
+                               value: None,
+                               param: None,
+                               children: vec![Box::new(TrieNode {
+                                                  key: "board".to_string(),
+                                                  value: Some("/b/:board"),
+                                                  param: Some(wild_regex()),
+                                                  children: vec![Box::new(TrieNode {
+                                                                     key: "/".to_string(),
+                                                                     value: None,
+                                                                     param: None,
+                                                                     children:
+                                                                         vec![Box::new(TrieNode {
                             key: "thread".to_string(),
                             value: Some("/b/:board/:thread"),
-                            param: true,
+                            param: Some(wild_regex()),
                             children: Vec::new(),
                         })],
-                    })],
-                                                  })],
-                               })],
-            };
+                                                                 })],
+                                              })],
+                           })],
+        };
+
         assert_eq!(trie, trie2);
+    }
+
+    #[test]
+    fn regex_test() {
+        let mut trie = TrieNode::new();
+        trie.insert("/", "/");
+        trie.insert("/b/{board}", "/b/:board");
+        trie.insert("/b/{board}/{thread:[0-9]+}", "/b/:board/:thread");
+
+        let trie2 = TrieNode {
+            key: "/".to_string(),
+            value: Some("/"),
+            param: None,
+            children: vec![Box::new(TrieNode {
+                               key: "b/".to_string(),
+                               value: None,
+                               param: None,
+                               children: vec![Box::new(TrieNode {
+                                                  key: "board".to_string(),
+                                                  value: Some("/b/:board"),
+                                                  param: Some(wild_regex()),
+                                                  children: vec![Box::new(TrieNode {
+                                                                     key: "/".to_string(),
+                                                                     value: None,
+                                                                     param: None,
+                                                                     children:
+                                                                         vec![Box::new(TrieNode {
+                            key: "thread".to_string(),
+                            value: Some("/b/:board/:thread"),
+                            param: Some(Regex::new("[0-9]+").unwrap()),
+                            children: Vec::new(),
+                        })],
+                                                                 })],
+                                              })],
+                           })],
+        };
+
+        assert_eq!(trie, trie2);
+
+        let (val, map) = trie.get("/b/a/5").unwrap();
+        assert_eq!(val, Some("/b/:board/:thread"));
+        assert_eq!(map.get(&"thread".to_string()), Some(&"5".to_string()));
+
+        assert_eq!(trie.get("/b/a/b"), None);
     }
 }
