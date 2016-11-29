@@ -9,6 +9,9 @@ marksman_escape = "0.1.2"
 serde_derive = "0.8.19"
 serde_json = "0.8.3"
 
+[dependencies.cookie]
+git = "https://github.com/hayaku-rs/cookie.git"
+
 [dependencies.hayaku-http]
 git = "https://github.com/hayaku-rs/hayaku-http.git"
 

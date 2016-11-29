@@ -1,5 +1,6 @@
 #![feature(proc_macro)]
 
+extern crate cookie;
 extern crate hayaku_http;
 extern crate hayaku_path;
 extern crate marksman_escape;
@@ -9,6 +10,7 @@ extern crate serde_json;
 
 use std::collections::HashMap;
 
+pub use cookie::Cookie;
 pub use hayaku_http::{Http, Request, ResponseWriter, Method, Status};
 pub use hayaku_path::Router;
 use marksman_escape::Escape;
