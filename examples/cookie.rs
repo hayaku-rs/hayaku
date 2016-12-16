@@ -17,7 +17,7 @@ fn main() {
 
     let mut router = Router::new();
     router.get("/", Rc::new(home_handler)).unwrap();
-    router.post("/", Rc::new(login_handler)).unwrap();
+    router.post("/login", Rc::new(login_handler)).unwrap();
     router.get("/secret", Rc::new(secret_handler)).unwrap();
 
     let addr = "127.0.0.1:3000".parse().unwrap();
@@ -34,9 +34,10 @@ fn login_handler(req: &Request, res: &mut ResponseWriter, ctx: &Context) {
     let password = req.form_value("password").unwrap();
 
     if username == ctx.username && password == ctx.password {
-        let cookie = Cookie::new("logged in", "true");
-        res.set_cookie(cookie);
-        res.redirect(Status::Found, b"/secret", b"You logged in!");
+        let p = "/".to_string();
+        let cookie = Cookie::new("loggedin", "true").path(p);
+        res.set_cookie(&cookie);
+        res.redirect(Status::Found, b"/secret", b"");
     } else {
         res.redirect(Status::Found, b"/", b"Incorrect login");
     }
