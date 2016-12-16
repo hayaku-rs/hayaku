@@ -7,7 +7,7 @@ extern crate hayaku;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
-use hayaku::{header, Http, Request, Response, Router, Status};
+use hayaku::{Http, Request, Response, Router, Status};
 use rand::Rng;
 
 type Ctx = Arc<RwLock<Context>>;
@@ -41,7 +41,7 @@ fn main() {
 }
 
 fn new_paste(_req: &Request, res: &mut Response, _ctx: &Ctx) {
-    if let Err(e) = res.send_file("examples/new.html") {
+    if let Err(e) = res.send_file("examples/assets/new.html") {
         error!("{}", e);
     }
 }
@@ -59,7 +59,8 @@ fn get_paste(req: &Request, res: &mut Response, ctx: &Ctx) {
     if let Some(p) = lock.db.get(pastename) {
         info!("paste_retrieved: {}", p);
         // res.add_header("Content-Type", b"text/plain; charset=utf-8");
-        res.header(header::ContentType("text/plain; charset=utf-8".parse().unwrap()));
+        res.add_header("Content-Type".to_string(),
+                       "text/plain; charset=utf-8".to_string());
         // res.write_all(p.as_bytes()).unwrap();
         res.body(p.as_bytes());
     } else {
@@ -87,6 +88,7 @@ fn make_paste(req: &Request, res: &mut Response, ctx: &Ctx) {
     lock.db.insert(String::from(name.clone()), paste.clone());
 
     // Redirect the user to the url of the created paste
+    info!("redirecting");
     res.redirect(Status::Found, name, b"You are being redirected");
 }
 

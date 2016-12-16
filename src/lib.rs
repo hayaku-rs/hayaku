@@ -11,7 +11,7 @@ extern crate serde_json;
 use std::collections::HashMap;
 
 pub use cookie::Cookie;
-pub use hayaku_http::{header, Http, Request, Response, Method, Status};
+pub use hayaku_http::{Header, Http, Request, Response, Method, Status};
 pub use hayaku_path::Router;
 use marksman_escape::Escape;
 

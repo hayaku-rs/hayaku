@@ -1,6 +1,6 @@
 extern crate hayaku;
 
-use hayaku::{header, Http, Router, Request, Response};
+use hayaku::{Http, Router, Request, Response};
 
 use std::sync::Arc;
 
@@ -17,6 +17,6 @@ fn main() {
 fn plaintext_handler(_req: &Request, res: &mut Response, _ctx: &()) {
     let data = "Hello, World!";
 
-    res.header(header::ContentType("text/plain".parse().unwrap()));
+    res.add_header("Content-Type".to_string(), "text/plain".to_string());
     res.body(data.as_bytes());
 }
