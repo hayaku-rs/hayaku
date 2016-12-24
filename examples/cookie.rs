@@ -40,9 +40,9 @@ fn login_handler(req: &Request, res: &mut Response, ctx: &Context) {
         let p = "/".to_string();
         let cookie = Cookie::new("loggedin", "true").path(p);
         res.set_cookie(&cookie);
-        res.redirect(Status::Found, "/secret", b"").unwrap();
+        res.redirect(Status::Found, "/secret", b"");
     } else {
-        res.redirect(Status::Found, "/", b"Incorrect login").unwrap();
+        res.redirect(Status::Found, "/", b"Incorrect login");
     }
 }
 
@@ -56,5 +56,5 @@ fn secret_handler(req: &Request, res: &mut Response, _ctx: &Context) {
         }
     }
 
-    res.redirect(Status::Found, "/", b"Incorrect login").unwrap();
+    res.redirect(Status::Found, "/", b"Incorrect login");
 }

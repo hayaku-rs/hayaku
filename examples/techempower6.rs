@@ -15,5 +15,5 @@ fn main() {
 
 fn plaintext_handler(_req: &Request, res: &mut Response, _ctx: &()) {
     res.add_header("Content-Type".to_string(), "text/plain".to_string());
-    res.body(b"Hello, World!").unwrap();
+    res.body(b"Hello, World!");
 }

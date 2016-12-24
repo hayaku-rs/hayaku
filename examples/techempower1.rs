@@ -24,5 +24,5 @@ fn json_handler(_req: &Request, res: &mut Response, _ctx: &()) {
     let data = &rustc_serialize::json::encode(&msg).unwrap();
 
     res.add_header("Content-Type".to_string(), "application/json".to_string());
-    res.body(data.as_bytes()).unwrap();
+    res.body(data.as_bytes());
 }

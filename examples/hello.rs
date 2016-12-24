@@ -16,5 +16,5 @@ fn main() {
 }
 
 fn hello_handler(_req: &Request, res: &mut Response, _ctx: &()) {
-    res.body(b"Hello, world!").unwrap();
+    res.body(b"Hello, world!");
 }
