@@ -2,7 +2,7 @@
 
 An http library based on Golang's `net/http` written using Tokio and Futures.
 
-### NOTE: This is pre-alpha software relying on pre-alpha software. Use at your own risk.
+### Warning: This is pre-alpha software relying on pre-alpha software. Use at your own risk.
 
 ### Using
 Note that hayaku relies on serde, which uses unstable compiler features. This
@@ -13,18 +13,18 @@ Place `hayaku = { git="https://github.com/nokaa/hayaku" }` in your `Cargo.toml`.
 
 ```Rust
 extern crate hayaku;
-use haykau::{Http, Router, Request, ResponseWriter};
-use std::rc::Rc;
+use haykau::{Http, Router, Request, Response};
+use std::sync::Arc;
 
 fn main () {
+    let addr = "127.0.0.1:3000".parse().unwrap();
     let mut router = Router::new();
-    router.get("/", Rc::new(home_handler)).unwrap();
+    router.get("/", Arc::new(home_handler)).unwrap();
 
-    let http = Http::new(router, ());
-    http.listen_and_serve("127.0.0.1:3000".parse().unwrap());
+    Http::new(router, ()).listen_and_serve(addr);
 }
 
-fn home_handler(_req: Request, res; ResponseWriter, _ctx: &()) {
-    res.write_all(b"Hello, world!").unwrap();
+fn home_handler(_req: &Request, res: &mut Response, _ctx: &()) {
+    res.body(b"Hello, world!").unwrap();
 }
 ```
