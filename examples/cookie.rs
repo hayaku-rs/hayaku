@@ -13,7 +13,7 @@ struct Context {
 }
 
 fn main() {
-    env_logger::init();
+    env_logger::init().unwrap();
     let ctx = Context {
         username: "username".to_string(),
         password: "password".to_string(),
@@ -25,12 +25,11 @@ fn main() {
     router.get("/secret", Arc::new(secret_handler)).unwrap();
 
     let addr = "127.0.0.1:3000".parse().unwrap();
-    let http = Http::new(router, ctx);
-    http.listen_and_serve(addr);
+    Http::new(router, ctx).listen_and_serve(addr);
 }
 
 fn home_handler(_req: &Request, res: &mut Response, _ctx: &Context) {
-    res.send_file("examples/assets/login.html");
+    res.send_file("examples/assets/login.html").unwrap();
 }
 
 fn login_handler(req: &Request, res: &mut Response, ctx: &Context) {
@@ -41,9 +40,9 @@ fn login_handler(req: &Request, res: &mut Response, ctx: &Context) {
         let p = "/".to_string();
         let cookie = Cookie::new("loggedin", "true").path(p);
         res.set_cookie(&cookie);
-        res.redirect(Status::Found, "/secret", b"");
+        res.redirect(Status::Found, "/secret", b"").unwrap();
     } else {
-        res.redirect(Status::Found, "/", b"Incorrect login");
+        res.redirect(Status::Found, "/", b"Incorrect login").unwrap();
     }
 }
 
@@ -52,10 +51,10 @@ fn secret_handler(req: &Request, res: &mut Response, _ctx: &Context) {
     info!("cookies: {:?}", cookies);
     for cookie in cookies {
         if cookie.name == "loggedin" && cookie.value == "true" {
-            res.send_file("examples/assets/secret.html");
+            res.send_file("examples/assets/secret.html").unwrap();
             return;
         }
     }
 
-    res.redirect(Status::Found, "/", b"Incorrect login");
+    res.redirect(Status::Found, "/", b"Incorrect login").unwrap();
 }

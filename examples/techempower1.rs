@@ -11,8 +11,7 @@ fn main() {
     let mut router = Router::new();
     router.get("/json", Arc::new(json_handler)).unwrap();
 
-    let http = Http::new(router, ());
-    http.listen_and_serve(addr);
+    Http::new(router, ()).listen_and_serve(addr);
 }
 
 #[derive(RustcEncodable)]
@@ -25,5 +24,5 @@ fn json_handler(_req: &Request, res: &mut Response, _ctx: &()) {
     let data = &rustc_serialize::json::encode(&msg).unwrap();
 
     res.add_header("Content-Type".to_string(), "application/json".to_string());
-    res.body(data.as_bytes());
+    res.body(data.as_bytes()).unwrap();
 }

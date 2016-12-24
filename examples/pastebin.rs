@@ -36,8 +36,8 @@ fn main() {
     router.get("/{pastename:[a-zA-Z0-9]+\\.[a-zA-Z0-9]+}",
              Arc::new(get_paste))
         .unwrap();
-    let http = Http::new(router, ctx);
-    http.listen_and_serve(addr);
+
+    Http::new(router, ctx).listen_and_serve(addr);
 }
 
 fn new_paste(_req: &Request, res: &mut Response, _ctx: &Ctx) {
@@ -62,7 +62,7 @@ fn get_paste(req: &Request, res: &mut Response, ctx: &Ctx) {
         res.add_header("Content-Type".to_string(),
                        "text/plain; charset=utf-8".to_string());
         // res.write_all(p.as_bytes()).unwrap();
-        res.body(p.as_bytes());
+        res.body(p.as_bytes()).unwrap();
     } else {
         not_found(req, res, ctx);
     }
@@ -89,12 +89,12 @@ fn make_paste(req: &Request, res: &mut Response, ctx: &Ctx) {
 
     // Redirect the user to the url of the created paste
     info!("redirecting");
-    res.redirect(Status::Found, name, b"You are being redirected");
+    res.redirect(Status::Found, name, b"You are being redirected").unwrap();
 }
 
 fn not_found(_req: &Request, res: &mut Response, _ctx: &Ctx) {
     res.status(Status::NotFound);
-    res.body("404 = Page not found".as_bytes());
+    res.body("404 = Page not found".as_bytes()).unwrap();
 }
 
 /// Generate a unique id of length 10 from the set of ascii characters

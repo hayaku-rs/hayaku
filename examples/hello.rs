@@ -12,11 +12,9 @@ fn main() {
     let mut router = Router::new();
     router.get("/", Arc::new(hello_handler)).unwrap();
 
-    let http = Http::new(router, ());
-    http.listen_and_serve(addr);
+    Http::new(router, ()).listen_and_serve(addr);
 }
 
 fn hello_handler(_req: &Request, res: &mut Response, _ctx: &()) {
-    let data = "Hello, world!";
-    res.body(data.as_bytes());
+    res.body(b"Hello, world!").unwrap();
 }
