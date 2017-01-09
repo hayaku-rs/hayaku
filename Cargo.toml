@@ -6,8 +6,6 @@ authors = ["nokaa <nokaa@cock.li>"]
 [dependencies]
 log = "0.3"
 marksman_escape = "0.1.2"
-serde_derive = "0.8.19"
-serde_json = "0.8.3"
 
 [dependencies.cookie]
 git = "https://github.com/hayaku-rs/cookie.git"
