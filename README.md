@@ -4,6 +4,9 @@ An http library based on Golang's `net/http` written using Tokio and Futures.
 
 ### Warning: This is pre-alpha software relying on pre-alpha software. Use at your own risk.
 
+Various example servers are included in `examples/`. For a more complex use case,
+take a look at [neppit]("https://github.com/nokaa/neppit").
+
 ### Using
 Note that hayaku relies on serde, which uses unstable compiler features. This
 means that until these features are stabilized, you must use a nightly version
